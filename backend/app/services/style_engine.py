@@ -1,4 +1,5 @@
 from collections import Counter
+from app.services.openai_service import chatgpt_json
 
 
 QUESTIONS = [
@@ -205,3 +206,80 @@ def evaluate_style(answer_styles: list[str]) -> dict:
         "auditory_score": auditory,
         "kinesthetic_score": kinesthetic,
     }
+
+
+def _validate_generated_questions(items: list[dict]) -> list[dict]:
+    validated: list[dict] = []
+    valid_styles = {"visual", "auditory", "kinesthetic"}
+
+    for idx, item in enumerate(items, start=1):
+        question_text = str(item.get("question", "")).strip()
+        options = item.get("options", [])
+        if not question_text or not isinstance(options, list) or len(options) != 3:
+            continue
+
+        normalized_options = []
+        seen_styles = set()
+        for opt_idx, option in enumerate(options):
+            text = str(option.get("text", "")).strip()
+            style = str(option.get("style", "")).strip().lower()
+            if not text or style not in valid_styles or style in seen_styles:
+                normalized_options = []
+                break
+            seen_styles.add(style)
+            normalized_options.append(
+                {
+                    "key": chr(65 + opt_idx),
+                    "text": text,
+                    "style": style,
+                }
+            )
+
+        if len(normalized_options) == 3:
+            validated.append(
+                {
+                    "id": idx,
+                    "question": question_text,
+                    "options": normalized_options,
+                }
+            )
+    return validated
+
+
+def generate_interest_based_questions(interests: str, total_questions: int = 20) -> tuple[list[dict], str]:
+    clean_count = max(10, min(30, int(total_questions)))
+    interest_text = interests.strip()
+    context = interest_text if interest_text else "general student profile"
+
+    system_prompt = (
+        "You generate psychometric-style MCQ questions to identify learning style "
+        "(visual, auditory, kinesthetic). Return strict JSON only."
+    )
+    user_prompt = (
+        "Create exactly {count} learning-style questions tailored to this learner context: "
+        "\"{context}\".\n\n"
+        "Output JSON object with this schema:\n"
+        "{{\n"
+        "  \"questions\": [\n"
+        "    {{\"question\": \"...\", \"options\": [\n"
+        "      {{\"text\": \"...\", \"style\": \"visual\"}},\n"
+        "      {{\"text\": \"...\", \"style\": \"auditory\"}},\n"
+        "      {{\"text\": \"...\", \"style\": \"kinesthetic\"}}\n"
+        "    ]}}\n"
+        "  ]\n"
+        "}}\n"
+        "Rules: Use distinct options, one option per style for each question."
+    ).format(count=clean_count, context=context)
+
+    payload = chatgpt_json(system_prompt, user_prompt, temperature=0.5)
+    if not payload:
+        return QUESTIONS[:clean_count], "default"
+
+    generated = payload.get("questions", [])
+    if not isinstance(generated, list):
+        return QUESTIONS[:clean_count], "default"
+
+    validated = _validate_generated_questions(generated)
+    if len(validated) != clean_count:
+        return QUESTIONS[:clean_count], "default"
+    return validated, "ai"

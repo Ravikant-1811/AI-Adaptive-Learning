@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models import LearningStyle
-from app.services.style_engine import QUESTIONS, evaluate_style
+from app.services.style_engine import QUESTIONS, evaluate_style, generate_interest_based_questions
 
 
 style_bp = Blueprint("style", __name__, url_prefix="/api/style")
@@ -12,6 +12,16 @@ style_bp = Blueprint("style", __name__, url_prefix="/api/style")
 @jwt_required()
 def questions():
     return jsonify({"questions": QUESTIONS})
+
+
+@style_bp.post("/generate-questions")
+@jwt_required()
+def generate_questions():
+    payload = request.get_json() or {}
+    interests = str(payload.get("interests", "")).strip()
+    question_count = int(payload.get("question_count", 20))
+    questions, source = generate_interest_based_questions(interests, question_count)
+    return jsonify({"questions": questions, "source": source})
 
 
 @style_bp.post("/select")
@@ -42,8 +52,8 @@ def submit_test():
     if not isinstance(answers, list) or not answers:
         return jsonify({"error": "answers list is required"}), 400
 
-    if len(answers) != len(QUESTIONS):
-        return jsonify({"error": f"exactly {len(QUESTIONS)} answers required"}), 400
+    if len(answers) < 10 or len(answers) > 30:
+        return jsonify({"error": "answers must be between 10 and 30"}), 400
 
     if not all(a in {"visual", "auditory", "kinesthetic"} for a in answers):
         return jsonify({"error": "invalid answer value"}), 400

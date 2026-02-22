@@ -2,7 +2,8 @@ from pathlib import Path
 from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
-from app.models import Download, LearningStyle
+from app.models import Download, LearningStyle, ChatHistory
+from app.services.adaptive_content_service import generate_learning_asset
 from app.services.download_service import create_download_file
 
 
@@ -15,20 +16,34 @@ def create_download():
     user_id = int(get_jwt_identity())
     payload = request.get_json() or {}
     content_type = payload.get("content_type", "").strip()
-    content = payload.get("content", "Sample generated content")
+    content = payload.get("content", "")
+    base_content = str(payload.get("base_content", "")).strip()
+    topic = str(payload.get("topic", "")).strip()
 
     style_row = LearningStyle.query.get(user_id)
     if not style_row:
         return jsonify({"error": "learning style not set"}), 400
 
+    common_types = {"task_sheet", "solution", "pdf", "audio"}
     allowed_by_style = {
-        "visual": {"pdf", "video"},
-        "auditory": {"audio"},
-        "kinesthetic": {"task_sheet", "solution"},
+        "visual": {"pdf", "video"} | common_types,
+        "auditory": {"audio"} | common_types,
+        "kinesthetic": {"task_sheet", "solution"} | common_types,
     }
 
     if content_type not in allowed_by_style[style_row.learning_style]:
         return jsonify({"error": f"{content_type} is not allowed for {style_row.learning_style}"}), 400
+
+    if not topic:
+        latest_chat = (
+            ChatHistory.query.filter_by(user_id=user_id)
+            .order_by(ChatHistory.timestamp.desc())
+            .first()
+        )
+        topic = latest_chat.question if latest_chat else "learning concept"
+
+    if not str(content).strip():
+        content = generate_learning_asset(style_row.learning_style, content_type, topic, base_content)
 
     file_path = create_download_file(user_id, content_type, content)
     row = Download(user_id=user_id, content_type=content_type, file_path=file_path)

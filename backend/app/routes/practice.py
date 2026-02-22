@@ -1,65 +1,12 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
-from app.models import PracticeActivity, LearningStyle
+from app.models import PracticeActivity, LearningStyle, ChatHistory
 from app.services.lab_runner import run_java_code
+from app.services.practice_task_service import generate_practice_tasks_from_topic
 
 
 practice_bp = Blueprint("practice", __name__, url_prefix="/api/practice")
-
-PRELOADED_TASKS = [
-    {
-        "task_name": "Try-catch for divide by zero",
-        "description": "Handle ArithmeticException and print a user-friendly message.",
-        "starter_code": (
-            "public class Main {\n"
-            "  public static void main(String[] args) {\n"
-            "    try {\n"
-            "      int result = 20 / 0;\n"
-            "      System.out.println(result);\n"
-            "    } catch (ArithmeticException e) {\n"
-            "      System.out.println(\"Handled: \" + e.getMessage());\n"
-            "    } finally {\n"
-            "      System.out.println(\"Complete\");\n"
-            "    }\n"
-            "  }\n"
-            "}"
-        ),
-    },
-    {
-        "task_name": "Handle multiple exceptions",
-        "description": "Use separate catch blocks for ArithmeticException and NullPointerException.",
-        "starter_code": (
-            "public class Main {\n"
-            "  public static void main(String[] args) {\n"
-            "    try {\n"
-            "      String value = null;\n"
-            "      System.out.println(value.length());\n"
-            "    } catch (NullPointerException e) {\n"
-            "      System.out.println(\"Null handled\");\n"
-            "    } catch (ArithmeticException e) {\n"
-            "      System.out.println(\"Math handled\");\n"
-            "    }\n"
-            "  }\n"
-            "}"
-        ),
-    },
-    {
-        "task_name": "finally block cleanup",
-        "description": "Ensure finally block runs whether exception occurs or not.",
-        "starter_code": (
-            "public class Main {\n"
-            "  public static void main(String[] args) {\n"
-            "    try {\n"
-            "      System.out.println(\"Run task\");\n"
-            "    } finally {\n"
-            "      System.out.println(\"Cleanup always runs\");\n"
-            "    }\n"
-            "  }\n"
-            "}"
-        ),
-    },
-]
 
 
 def _ensure_kinesthetic(user_id: int):
@@ -78,7 +25,15 @@ def tasks():
     guard = _ensure_kinesthetic(user_id)
     if guard:
         return guard
-    return jsonify({"tasks": PRELOADED_TASKS})
+
+    latest_chat = (
+        ChatHistory.query.filter_by(user_id=user_id)
+        .order_by(ChatHistory.timestamp.desc())
+        .first()
+    )
+    topic = latest_chat.question if latest_chat else "Java exception handling"
+    generated_tasks, source = generate_practice_tasks_from_topic(topic, count=3)
+    return jsonify({"tasks": generated_tasks, "topic": topic, "source": source})
 
 
 @practice_bp.post("/run")
