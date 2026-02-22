@@ -76,17 +76,50 @@ def _validate_tasks(items: list[dict]) -> list[dict]:
     return valid
 
 
+def _is_low_signal_topic(topic: str) -> bool:
+    text = (topic or "").strip().lower()
+    if not text:
+        return True
+    low_signal_phrases = {
+        "i want learn new things",
+        "learn new things",
+        "new things",
+        "hello",
+        "hi",
+        "help me",
+        "anything",
+    }
+    if text in low_signal_phrases:
+        return True
+    return len(text.split()) < 3
+
+
+def _merge_with_defaults(tasks: list[dict], count: int) -> list[dict]:
+    merged: list[dict] = []
+    seen = set()
+    for item in tasks + DEFAULT_TASKS:
+        key = item["task_name"].strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(item)
+        if len(merged) >= count:
+            break
+    return merged
+
+
 def generate_practice_tasks_from_topic(topic: str, count: int = 3) -> tuple[list[dict], str]:
     clean_topic = (topic or "").strip()
-    if not clean_topic:
-        return DEFAULT_TASKS, "default"
+    safe_count = max(1, min(5, int(count)))
+    if not clean_topic or _is_low_signal_topic(clean_topic):
+        return DEFAULT_TASKS[:safe_count], "default"
 
     system_prompt = (
         "You are a Java tutor creating practical exception-handling practice tasks. "
         "Return strict JSON only."
     )
     user_prompt = (
-        f"Generate {count} Java coding tasks for this topic: {clean_topic}.\n"
+        f"Generate {safe_count} Java coding tasks for this topic: {clean_topic}.\n"
         "Output JSON object:\n"
         "{\n"
         "  \"tasks\": [\n"
@@ -102,10 +135,10 @@ def generate_practice_tasks_from_topic(topic: str, count: int = 3) -> tuple[list
 
     payload = chatgpt_json(system_prompt, user_prompt, temperature=0.4)
     if not payload or not isinstance(payload.get("tasks"), list):
-        return DEFAULT_TASKS, "default"
+        return DEFAULT_TASKS[:safe_count], "default"
 
     tasks = _validate_tasks(payload["tasks"])
     if len(tasks) < 1:
-        return DEFAULT_TASKS, "default"
+        return DEFAULT_TASKS[:safe_count], "default"
 
-    return tasks[:count], "ai"
+    return _merge_with_defaults(tasks, safe_count), "ai"

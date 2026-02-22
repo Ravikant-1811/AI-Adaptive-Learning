@@ -21,6 +21,27 @@ export default function PracticePage() {
   const [taskSource, setTaskSource] = useState("default");
   const [taskTopic, setTaskTopic] = useState("");
 
+  const loadPracticeData = async () => {
+    if (style !== "kinesthetic") return;
+    setPageLoading(true);
+    setPageError("");
+    try {
+      const [taskRes, activityRes] = await Promise.all([api.get("/practice/tasks"), api.get("/practice/mine")]);
+      const taskList = taskRes.data.tasks || [];
+      setTasks(taskList);
+      setTaskSource(taskRes.data.source || "default");
+      setTaskTopic(taskRes.data.topic || "");
+      const first = taskList[0] || null;
+      setSelectedTask(first);
+      setCode(first?.starter_code || "");
+      setActivities(activityRes.data || []);
+    } catch (err) {
+      setPageError(err.response?.data?.error || "Failed to load practice lab.");
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
   useEffect(() => {
     setStyleLoading(true);
     api
@@ -32,23 +53,7 @@ export default function PracticePage() {
 
   useEffect(() => {
     if (style !== "kinesthetic") return;
-    setPageLoading(true);
-    setPageError("");
-    Promise.all([api.get("/practice/tasks"), api.get("/practice/mine")])
-      .then(([taskRes, activityRes]) => {
-        const taskList = taskRes.data.tasks || [];
-        setTasks(taskList);
-        setTaskSource(taskRes.data.source || "default");
-        setTaskTopic(taskRes.data.topic || "");
-        const first = taskList[0] || null;
-        setSelectedTask(first);
-        setCode(first?.starter_code || "");
-        setActivities(activityRes.data || []);
-      })
-      .catch((err) => {
-        setPageError(err.response?.data?.error || "Failed to load practice lab.");
-      })
-      .finally(() => setPageLoading(false));
+    loadPracticeData();
   }, [style]);
 
   useEffect(() => {
@@ -205,6 +210,10 @@ export default function PracticePage() {
             Task Source: <strong>{taskSource === "ai" ? "AI from latest chatbot question" : "Default task bank"}</strong>
           </p>
           {taskTopic && <p className="mb-2 text-muted">Current Topic: <strong>{taskTopic}</strong></p>}
+          <p className="mb-2 text-muted">Tasks Loaded: <strong>{tasks.length}</strong></p>
+          <button className="btn btn-sm btn-outline-dark mb-3" onClick={loadPracticeData} disabled={pageLoading}>
+            {pageLoading ? "Refreshing..." : "Refresh Tasks"}
+          </button>
 
           <label className="form-label">Select Task</label>
           <select
