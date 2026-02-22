@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 from app.models import LearningStyle, ChatHistory, Download
 from app.services.chatbot_service import generate_adaptive_response
-from app.services.adaptive_content_service import generate_learning_asset
 from app.services.download_service import create_download_file
 
 
@@ -14,7 +14,12 @@ def _auto_generate_resources(user_id: int, style: str, topic: str, base_content:
     resources = []
     content_types = ["pdf", "audio", "task_sheet", "solution"]
     for ctype in content_types:
-        asset_text = generate_learning_asset(style, ctype, topic, base_content)
+        asset_text = (
+            f"Topic: {topic}\n"
+            f"Learning style: {style}\n"
+            f"Resource type: {ctype}\n\n"
+            f"{base_content[:3500]}"
+        )
         file_path = create_download_file(user_id, ctype, asset_text)
         row = Download(user_id=user_id, content_type=ctype, file_path=file_path)
         db.session.add(row)
@@ -42,21 +47,25 @@ def ask_chatbot():
         return jsonify({"error": "learning style not found"}), 400
 
     result = generate_adaptive_response(question, style_row.learning_style)
-    auto_resources = _auto_generate_resources(
-        user_id=user_id,
-        style=style_row.learning_style,
-        topic=question,
-        base_content=result["text"],
-    )
-    history = ChatHistory(
-        user_id=user_id,
-        question=question,
-        response=result["text"],
-        response_type=result["response_type"],
-        learning_style_used=style_row.learning_style,
-    )
-    db.session.add(history)
-    db.session.commit()
+    try:
+        auto_resources = _auto_generate_resources(
+            user_id=user_id,
+            style=style_row.learning_style,
+            topic=question,
+            base_content=result["text"],
+        )
+        history = ChatHistory(
+            user_id=user_id,
+            question=question,
+            response=result["text"],
+            response_type=result["response_type"],
+            learning_style_used=style_row.learning_style,
+        )
+        db.session.add(history)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({"error": "temporary database issue. please retry"}), 503
 
     result["auto_resources"] = auto_resources
     return jsonify(result)

@@ -72,7 +72,7 @@ def chatgpt_json(system_prompt: str, user_prompt: str, temperature: float = 0.3)
                     {"role": "user", "content": user_prompt},
                 ],
             },
-            timeout=60,
+            timeout=12,
         )
         response.raise_for_status()
         data = response.json()
@@ -103,7 +103,7 @@ def chatgpt_text(system_prompt: str, user_prompt: str, temperature: float = 0.4)
                     {"role": "user", "content": user_prompt},
                 ],
             },
-            timeout=60,
+            timeout=12,
         )
         response.raise_for_status()
         data = response.json()
@@ -134,7 +134,7 @@ def generate_tts_mp3(text: str, output_path: str) -> bool:
                 "input": text[:4000],
                 "format": "mp3",
             },
-            timeout=90,
+            timeout=20,
         )
         response.raise_for_status()
         out = Path(output_path)

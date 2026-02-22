@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
+from sqlalchemy import text
 from app.extensions import db, jwt
 
 
@@ -11,8 +12,16 @@ def create_app():
 
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///adaptive_learning.db")
+    database_uri = os.getenv("DATABASE_URL", "sqlite:///adaptive_learning.db")
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    if database_uri.startswith("sqlite"):
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+            "connect_args": {
+                "timeout": 30,
+                "check_same_thread": False,
+            }
+        }
 
     CORS(app)
     db.init_app(app)
@@ -46,5 +55,9 @@ def create_app():
         from app import models
 
         db.create_all()
+        if database_uri.startswith("sqlite"):
+            db.session.execute(text("PRAGMA journal_mode=WAL"))
+            db.session.execute(text("PRAGMA synchronous=NORMAL"))
+            db.session.commit()
 
     return app
