@@ -45,6 +45,39 @@ export default function DashboardPage() {
       ? "Open practice lab and complete one guided task."
       : "Ask chatbot for one concept and download the personalized resource.";
 
+  const recommendationCards = [
+    {
+      key: "visual",
+      title: "Visual",
+      points: styleData?.visual_score || 0,
+      tips: [
+        "Use diagrams, charts, and mind maps for studying",
+        "Color-code your notes and materials",
+        "Watch educational videos and visual demonstrations",
+      ],
+    },
+    {
+      key: "auditory",
+      title: "Auditory",
+      points: styleData?.auditory_score || 0,
+      tips: [
+        "Listen to lectures and audio recordings",
+        "Discuss topics with study groups",
+        "Read your notes out loud",
+      ],
+    },
+    {
+      key: "kinesthetic",
+      title: "Kinesthetic",
+      points: styleData?.kinesthetic_score || 0,
+      tips: [
+        "Take frequent breaks to move around",
+        "Use hands-on activities and experiments",
+        "Act out concepts or use role-playing",
+      ],
+    },
+  ];
+
   const downloadHistoryFile = async (item) => {
     setDownloadError("");
     try {
@@ -132,6 +165,23 @@ export default function DashboardPage() {
                 <Link to="/style" className="btn surface-btn text-start">Retake learning style assessment</Link>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="glass-card p-4 mb-4">
+          <h5 className="mb-3">Personalized Learning Recommendations</h5>
+          <div className="recommend-grid">
+            {recommendationCards.map((item) => (
+              <article key={item.key} className={`recommend-card ${styleData?.learning_style === item.key ? "active" : ""}`}>
+                <h6 className="mb-1">{item.title}</h6>
+                <p className="text-muted mb-2">{item.points}/20 points</p>
+                <ul className="mb-0 small">
+                  {item.tips.map((tip) => (
+                    <li key={tip}>{tip}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
           </div>
         </div>
 

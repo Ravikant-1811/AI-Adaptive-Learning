@@ -1,17 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
 :root {
-  --bg: #f4f7fb;
-  --bg-alt: #ebf1f9;
+  --bg: #f4f2fb;
+  --bg-alt: #eeebf8;
   --card: #ffffff;
-  --card-soft: #f8fbff;
+  --card-soft: #f8f8fe;
   --ink: #14243a;
   --muted: #5f728a;
   --line: #d9e2ee;
-  --brand: #0058d8;
-  --brand-2: #00a896;
-  --accent: #ff8c42;
-  --danger: #c44536;
+  --brand: #4e5cf3;
 }
 
 * {
@@ -22,14 +19,14 @@ body {
   margin: 0;
   color: var(--ink);
   background:
-    radial-gradient(900px 500px at 5% -10%, #d9e8ff 0%, transparent 60%),
-    radial-gradient(900px 500px at 95% -15%, #ccf3ef 0%, transparent 62%),
+    radial-gradient(900px 500px at 5% -10%, #e3dfff 0%, transparent 60%),
+    radial-gradient(900px 500px at 95% -15%, #d7ebff 0%, transparent 62%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
 }
 
 a {
-  color: var(--brand);
+  color: #3f55df;
 }
 
 .main-shell {
@@ -52,7 +49,7 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--brand), #4f7dff);
+  background: linear-gradient(135deg, #4d6bff, #9a27f0);
   color: #fff;
   font-weight: 700;
   font-size: 0.9rem;
@@ -61,7 +58,6 @@ a {
 .brand-name {
   color: var(--ink);
   font-weight: 700;
-  letter-spacing: 0.2px;
 }
 
 .nav-pill {
@@ -144,14 +140,16 @@ a {
   margin-top: 0.2rem;
 }
 
-.brand-btn {
-  background: linear-gradient(135deg, var(--brand), #3f74ff);
-  border-color: transparent;
+.brand-btn,
+.vak-gradient-btn {
+  background: linear-gradient(135deg, #4d6bff, #9a27f0);
+  border: none;
   color: #fff;
   font-weight: 600;
 }
 
-.brand-btn:hover {
+.brand-btn:hover,
+.vak-gradient-btn:hover {
   color: #fff;
   opacity: 0.95;
 }
@@ -234,6 +232,62 @@ a {
   transform: translateY(-1px);
 }
 
+.quiz-progress .progress {
+  background: #dad7e4;
+}
+
+.quiz-progress .progress-bar {
+  background: linear-gradient(90deg, #23253d, #4d6bff);
+}
+
+.quiz-card h4 {
+  font-size: 2rem;
+  line-height: 1.3;
+}
+
+.quiz-option {
+  border: 1px solid #d3d8e4;
+  border-radius: 16px;
+  background: #fff;
+  text-align: left;
+  padding: 1rem 1.1rem;
+  font-weight: 600;
+}
+
+.quiz-option:hover {
+  border-color: #a8b9d8;
+}
+
+.quiz-option.active {
+  background: #e8eef8;
+  border-color: #bdd0ed;
+}
+
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.recommend-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  padding: 1rem;
+}
+
+.recommend-card.active {
+  border-color: #4d8de0;
+  background: #edf3fc;
+  box-shadow: inset 0 0 0 1px #a3c8fa;
+}
+
+.badge-soft {
+  background: #e8f2ff;
+  color: #1d4f92;
+  border: 1px solid #c8dcf8;
+}
+
 .chatbot-layout {
   display: grid;
   grid-template-columns: 1.75fr 1fr;
@@ -289,7 +343,7 @@ a {
 }
 
 .chat-user .chat-bubble {
-  background: linear-gradient(135deg, var(--brand), #3f74ff);
+  background: linear-gradient(135deg, #4d6bff, #9a27f0);
   color: #fff;
 }
 
@@ -337,17 +391,125 @@ a {
   border-radius: 12px;
 }
 
-.topic-card {
+.vak-chat-shell {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 0;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  min-height: calc(100vh - 130px);
+}
+
+.vak-sidebar {
+  border-right: 1px solid var(--line);
+  background: #fbfbfe;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.vak-logo {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.vak-history-list {
+  display: grid;
+  gap: 0.7rem;
+  overflow: auto;
+}
+
+.vak-history-item {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 14px;
   padding: 0.85rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.vak-history-item.active,
+.vak-history-item:hover {
+  border-color: #d0daea;
+  background: #f2f3fa;
+}
+
+.vak-chat-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  min-height: calc(100vh - 130px);
+}
+
+.vak-chat-topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.vak-mode-pills {
+  display: inline-flex;
+  gap: 0.4rem;
+  background: #f0f0f3;
+  border-radius: 12px;
+  padding: 0.2rem;
+}
+
+.vak-mode-pills .pill {
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  color: #384964;
+  font-weight: 600;
+}
+
+.vak-mode-pills .pill.active {
+  color: #fff;
+  background: linear-gradient(135deg, #4d6bff, #9a27f0);
+}
+
+.vak-chat-window {
+  overflow: auto;
   background: #fff;
 }
 
-.badge-soft {
-  background: #e8f2ff;
-  color: #1d4f92;
-  border: 1px solid #c8dcf8;
+.vak-empty-state {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.vak-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  max-width: 760px;
+  width: 100%;
+}
+
+.vak-composer-wrap {
+  border-top: 1px solid var(--line);
+  background: #fbfbfe;
+  padding: 0.9rem 1.2rem;
+}
+
+.vak-composer {
+  display: flex;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.vak-composer .form-control {
+  border-radius: 14px;
+  border: 1px solid #d4dcea;
+  padding: 0.7rem 0.9rem;
+  resize: none;
 }
 
 @media (max-width: 992px) {
@@ -366,15 +528,32 @@ a {
   .auth-grid {
     grid-template-columns: 1fr;
   }
+
+  .vak-chat-shell {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .vak-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .vak-chat-main {
+    min-height: 70vh;
+  }
 }
 
 @media (max-width: 640px) {
   .metric-grid,
-  .choice-grid {
+  .choice-grid,
+  .recommend-grid,
+  .vak-quick-grid {
     grid-template-columns: 1fr;
   }
 
-  .composer {
+  .composer,
+  .vak-composer {
     flex-direction: column;
     align-items: stretch;
   }

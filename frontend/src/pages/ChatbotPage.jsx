@@ -5,9 +5,9 @@ import api from "../services/api";
 
 const QUICK_PROMPTS = [
   "Explain exception handling in Java",
-  "What is polymorphism with example?",
-  "Difference between interface and abstract class",
   "How does try-catch-finally work?",
+  "Difference between interface and abstract class",
+  "Give me a beginner Java debugging task",
 ];
 
 function formatStyle(style) {
@@ -18,6 +18,7 @@ function formatStyle(style) {
 export default function ChatbotPage() {
   const navigate = useNavigate();
   const chatWindowRef = useRef(null);
+
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState(null);
   const [history, setHistory] = useState([]);
@@ -29,7 +30,7 @@ export default function ChatbotPage() {
 
   useEffect(() => {
     api.get("/style/mine").then((res) => setStyle(res.data.learning_style));
-    api.get("/chat/history").then((res) => setHistory(res.data));
+    api.get("/chat/history").then((res) => setHistory(res.data || []));
   }, []);
 
   const conversation = useMemo(() => {
@@ -46,7 +47,6 @@ export default function ChatbotPage() {
         role: "assistant",
         text: h.response,
         responseType: h.response_type,
-        styleUsed: h.learning_style_used,
         sourceQuestion: h.question,
         timestamp: h.timestamp,
       },
@@ -69,6 +69,7 @@ export default function ChatbotPage() {
       const res = await api.post("/chat/", { question: asked });
       setResponse({ ...res.data, askedQuestion: asked });
       setAutoPack(res.data.auto_resources || []);
+
       if (res.data?.practice?.topic && Array.isArray(res.data?.practice?.tasks)) {
         localStorage.setItem(
           "linkedPracticeBundle",
@@ -80,14 +81,21 @@ export default function ChatbotPage() {
           })
         );
       }
+
       setQuestion("");
       const latest = await api.get("/chat/history");
-      setHistory(latest.data);
+      setHistory(latest.data || []);
     } catch (err) {
       setError(err.response?.data?.error || "Chatbot request failed.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearLocalChat = () => {
+    setHistory([]);
+    setResponse(null);
+    setAutoPack([]);
   };
 
   const downloadContent = async (contentType, topic, baseText) => {
@@ -130,207 +138,164 @@ export default function ChatbotPage() {
     }
   };
 
-  const openPracticeForTopic = (topic) => {
+  const openPracticeForTopic = (topic, taskName = "") => {
     const cleanTopic = (topic || response?.askedQuestion || question || "").trim();
     if (!cleanTopic) return;
-    navigate(`/practice?topic=${encodeURIComponent(cleanTopic)}`);
+    const taskQuery = taskName ? `&task=${encodeURIComponent(taskName)}` : "";
+    navigate(`/practice?topic=${encodeURIComponent(cleanTopic)}${taskQuery}`);
   };
 
   return (
     <>
       <NavBar />
-      <div className="container page-wrap">
-        <header className="page-header">
-          <p className="page-kicker mb-1">Adaptive Assistant</p>
-          <h2 className="page-title">AI Chat + Instant Practice Mapping</h2>
-          <p className="page-subtitle">Ask any concept, get style-based teaching, and jump directly into matching tasks.</p>
-        </header>
-
-        <div className="chatbot-layout">
-          <section className="glass-card p-3 p-md-4 chatbot-main">
-            <div className="chatbot-header mb-3">
+      <div className="container-fluid page-wrap px-3 px-md-4">
+        <div className="vak-chat-shell">
+          <aside className="vak-sidebar">
+            <div className="vak-logo mb-3">
+              <span className="brand-mark">AL</span>
               <div>
-                <h4 className="mb-1">AI Chatbot</h4>
-                <p className="text-muted mb-0">Learning mode: <strong>{formatStyle(style)}</strong></p>
+                <h5 className="mb-0">VAKify</h5>
+                <small className="text-muted">Adaptive AI Tutor</small>
               </div>
-              <span className={`badge ${response?.ai_used ? "text-bg-success" : "text-bg-secondary"}`}>
-                {response ? (response.ai_used ? "AI-generated" : "Fallback") : "Ready"}
-              </span>
             </div>
 
-            {error && <div className="alert alert-danger py-2">{error}</div>}
-            {downloadError && <div className="alert alert-danger py-2">{downloadError}</div>}
+            <button className="btn vak-gradient-btn w-100 mb-3" onClick={clearLocalChat}>+ New Chat</button>
 
-            <div ref={chatWindowRef} className="chat-window mb-3">
-              {conversation.length === 0 ? (
-                <div className="chat-empty text-muted">
-                  Start by asking a topic. Responses are adapted to your learning style.
+            <div className="vak-history-list">
+              {history.length === 0 ? (
+                <div className="vak-history-item active">
+                  <h6 className="mb-1">New Chat</h6>
+                  <p className="mb-1 text-muted">Start a new conversation</p>
+                  <small>Just now</small>
                 </div>
               ) : (
-                conversation.map((msg) => (
-                  <div key={msg.id} className={`chat-msg ${msg.role === "user" ? "chat-user" : "chat-assistant"}`}>
-                    <div className="chat-bubble">
-                      {msg.role === "assistant" && msg.responseType && (
-                        <small className="chat-meta">{msg.responseType} response</small>
-                      )}
-                      <pre className="chat-text">{msg.text}</pre>
-                      {msg.role === "assistant" && (
-                        <div className="d-flex flex-wrap gap-2 mt-2">
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => openPracticeForTopic(msg.sourceQuestion)}
-                          >
-                            Practice This Topic
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-warning"
-                            onClick={() => downloadContent("task_sheet", msg.sourceQuestion, msg.text)}
-                          >
-                            Download Task
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-success"
-                            onClick={() => downloadContent("solution", msg.sourceQuestion, msg.text)}
-                          >
-                            Download Solution
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                history.slice(0, 8).map((h, idx) => (
+                  <button
+                    key={h.chat_id}
+                    className={`vak-history-item ${idx === 0 ? "active" : ""}`}
+                    onClick={() => setQuestion(h.question)}
+                  >
+                    <h6 className="mb-1 text-start">{h.question}</h6>
+                    <small>{new Date(h.timestamp).toLocaleTimeString()}</small>
+                  </button>
                 ))
               )}
             </div>
+          </aside>
 
-            {response && (
-              <div className="asset-panel mb-3">
-                <h6 className="mb-2">Latest Response Assets</h6>
-                {response.assets?.diagram && <p className="mb-1"><strong>Diagram:</strong> {response.assets.diagram}</p>}
-                {response.assets?.video_url && <p className="mb-1"><a href={response.assets.video_url} target="_blank" rel="noreferrer">Open Video</a></p>}
-                {response.assets?.gif_url && <img src={response.assets.gif_url} alt="visual gif" className="asset-image" />}
-                {response.assets?.audio_url && <audio controls src={response.assets.audio_url} className="w-100 mt-2" />}
-                {response.assets?.starter_code && <pre className="chat-text mt-2">{response.assets.starter_code}</pre>}
-                {response.practice?.tasks?.length > 0 && (
-                  <div className="mt-3">
-                    <p className="mb-2"><strong>Assigned Practice Tasks ({response.practice.source})</strong></p>
-                    <ul className="mb-2">
-                      {response.practice.tasks.map((task) => (
-                        <li key={task.task_name}>
-                          <strong>{task.task_name}</strong>: {task.description}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="d-flex flex-wrap gap-2">
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={() =>
-                          openPracticeForTopic(response.practice.topic)
-                        }
-                      >
-                        Start Topic Practice
-                      </button>
-                      {response.practice.tasks.map((task) => (
-                        <button
-                          key={`start-${task.task_name}`}
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() =>
-                            navigate(
-                              `/practice?topic=${encodeURIComponent(response.practice.topic)}&task=${encodeURIComponent(task.task_name)}`
-                            )
-                          }
-                        >
-                          Start: {task.task_name}
-                        </button>
-                      ))}
-                    </div>
+          <section className="vak-chat-main">
+            <div className="vak-chat-topbar">
+              <div className="d-flex align-items-center gap-3 flex-wrap">
+                <h5 className="mb-0">Learning Mode:</h5>
+                <div className="vak-mode-pills">
+                  <span className={`pill ${style === "visual" ? "active" : ""}`}>Visual</span>
+                  <span className={`pill ${style === "auditory" ? "active" : ""}`}>Auditory</span>
+                  <span className={`pill ${style === "kinesthetic" ? "active" : ""}`}>Kinesthetic</span>
+                </div>
+              </div>
+              <button className="btn btn-sm surface-btn" onClick={clearLocalChat}>Clear Chat</button>
+            </div>
+
+            {error && <div className="alert alert-danger py-2 m-3 mb-0">{error}</div>}
+            {downloadError && <div className="alert alert-danger py-2 m-3 mb-0">{downloadError}</div>}
+
+            <div ref={chatWindowRef} className="vak-chat-window">
+              {conversation.length === 0 ? (
+                <div className="vak-empty-state">
+                  <div className="brand-mark" style={{ width: 80, height: 80, borderRadius: 24, fontSize: 24 }}>AL</div>
+                  <h2 className="mt-3 mb-2">Welcome to VAKify</h2>
+                  <p className="text-muted mb-3">Start learning with AI explanations tailored to your {formatStyle(style)} learning style.</p>
+                  <div className="vak-quick-grid">
+                    {QUICK_PROMPTS.map((p) => (
+                      <button key={p} className="btn surface-btn text-start" onClick={() => ask(p)}>{p}</button>
+                    ))}
                   </div>
-                )}
-                {autoPack.length > 0 && (
-                  <div className="mt-3">
-                    <p className="mb-2"><strong>Auto AI Learning Pack</strong></p>
-                    <div className="d-flex flex-wrap gap-2">
-                      {autoPack.map((item) => (
-                        <button
-                          key={item.download_id}
-                          className="btn btn-sm btn-outline-dark"
-                          onClick={() => downloadById(item.download_id, `${item.content_type}_${item.download_id}`)}
-                        >
-                          Download {item.content_type}
-                        </button>
-                      ))}
+                </div>
+              ) : (
+                <div className="p-3">
+                  {conversation.map((msg) => (
+                    <div key={msg.id} className={`chat-msg ${msg.role === "user" ? "chat-user" : "chat-assistant"}`}>
+                      <div className="chat-bubble">
+                        {msg.role === "assistant" && msg.responseType && (
+                          <small className="chat-meta">{msg.responseType} response</small>
+                        )}
+                        <pre className="chat-text">{msg.text}</pre>
+
+                        {msg.role === "assistant" && (
+                          <div className="d-flex flex-wrap gap-2 mt-2">
+                            <button className="btn btn-sm surface-btn" onClick={() => openPracticeForTopic(msg.sourceQuestion)}>
+                              Practice This Topic
+                            </button>
+                            <button className="btn btn-sm surface-btn" onClick={() => downloadContent("task_sheet", msg.sourceQuestion, msg.text)}>
+                              Download Task
+                            </button>
+                            <button className="btn btn-sm surface-btn" onClick={() => downloadContent("solution", msg.sourceQuestion, msg.text)}>
+                              Download Solution
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {response && response.practice?.tasks?.length > 0 && (
+              <div className="asset-panel m-3">
+                <h6 className="mb-2">Assigned Practice Tasks ({response.practice.source})</h6>
+                <div className="d-flex flex-wrap gap-2 mb-2">
+                  <button className="btn btn-sm vak-gradient-btn" onClick={() => openPracticeForTopic(response.practice.topic)}>
+                    Start Topic Practice
+                  </button>
+                  {response.practice.tasks.map((task) => (
+                    <button
+                      key={`start-${task.task_name}`}
+                      className="btn btn-sm surface-btn"
+                      onClick={() => openPracticeForTopic(response.practice.topic, task.task_name)}
+                    >
+                      Start: {task.task_name}
+                    </button>
+                  ))}
+                </div>
+                {autoPack.length > 0 && (
+                  <div className="d-flex flex-wrap gap-2">
+                    {autoPack.map((item) => (
+                      <button
+                        key={item.download_id}
+                        className="btn btn-sm surface-btn"
+                        onClick={() => downloadById(item.download_id, `${item.content_type}_${item.download_id}`)}
+                      >
+                        Download {item.content_type}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
             )}
 
-            <div className="composer">
-              <textarea
-                className="form-control"
-                rows={2}
-                placeholder="Ask anything..."
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    ask();
-                  }
-                }}
-              />
-              <button className="btn brand-btn text-white" onClick={() => ask()} disabled={loading}>
-                {loading ? "Thinking..." : "Ask"}
-              </button>
-              <button
-                className="btn surface-btn"
-                onClick={() => openPracticeForTopic()}
-                disabled={loading && !response}
-              >
-                Open Practice
-              </button>
+            <div className="vak-composer-wrap">
+              <div className="vak-composer">
+                <textarea
+                  className="form-control"
+                  rows={1}
+                  placeholder="Ask anything..."
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      ask();
+                    }
+                  }}
+                />
+                <button className="btn vak-gradient-btn" onClick={() => ask()} disabled={loading}>
+                  {loading ? "Thinking..." : "Send"}
+                </button>
+              </div>
+              <small className="text-muted">Press Enter to send • Shift + Enter for new line</small>
             </div>
           </section>
-
-          <aside className="glass-card p-3 p-md-4 chatbot-side">
-            <h6 className="mb-2">Quick Ask</h6>
-            <div className="d-flex flex-wrap gap-2 mb-4">
-              {QUICK_PROMPTS.map((p) => (
-                <button key={p} className="btn btn-sm btn-outline-secondary" onClick={() => ask(p)} disabled={loading}>
-                  {p}
-                </button>
-              ))}
-            </div>
-
-            <h6 className="mb-2">Download Options</h6>
-            <div className="d-grid gap-2 mb-4">
-              {style === "visual" && (
-                <>
-                  <button className="btn btn-sm surface-btn" onClick={() => downloadContent("pdf")} disabled={!response}>Download Notes</button>
-                  <button className="btn btn-sm surface-btn" onClick={() => downloadContent("video")} disabled={!response}>Download Video Summary</button>
-                </>
-              )}
-              {style === "auditory" && (
-                <button className="btn btn-sm surface-btn" onClick={() => downloadContent("audio")} disabled={!response}>Download Audio Script</button>
-              )}
-              <button className="btn btn-sm surface-btn" onClick={() => downloadContent("task_sheet")} disabled={!response}>Download Task Sheet</button>
-              <button className="btn btn-sm surface-btn" onClick={() => downloadContent("solution")} disabled={!response}>Download Solution</button>
-            </div>
-
-            <h6 className="mb-2">Recent Questions</h6>
-            {history.length === 0 ? (
-              <p className="text-muted mb-0">No history yet.</p>
-            ) : (
-              <ul className="list-unstyled mb-0 small">
-                {history.slice(0, 8).map((h) => (
-                  <li key={h.chat_id} className="mb-2">
-                    <button className="btn btn-link p-0 text-start" onClick={() => setQuestion(h.question)}>
-                      {h.question}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </aside>
         </div>
       </div>
     </>
