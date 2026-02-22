@@ -7,6 +7,7 @@ export default function PracticePage() {
   const [searchParams] = useSearchParams();
   const linkedTopicParam = (searchParams.get("topic") || "").trim();
   const linkedTaskParam = (searchParams.get("task") || "").trim();
+
   const [style, setStyle] = useState(null);
   const [styleLoading, setStyleLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
@@ -26,14 +27,54 @@ export default function PracticePage() {
   const [taskTopic, setTaskTopic] = useState("");
   const [topicCatalog, setTopicCatalog] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState("");
+  const [usingLinkedBundle, setUsingLinkedBundle] = useState(false);
+
+  const mapChatTaskToPracticeTask = (task) => ({
+    task_name: task.task_name,
+    description: task.description || "Task assigned from chat.",
+    starter_code:
+      task.starter_code ||
+      "public class Main {\n  public static void main(String[] args) {\n    // Implement this task\n  }\n}",
+  });
+
+  const loadFromLinkedBundle = (topic, preferredTaskName = "") => {
+    const raw = localStorage.getItem("linkedPracticeBundle");
+    if (!raw) return false;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed?.topic || !Array.isArray(parsed?.tasks) || parsed.tasks.length === 0) return false;
+      if ((parsed.topic || "").trim().toLowerCase() !== (topic || "").trim().toLowerCase()) return false;
+
+      const taskList = parsed.tasks.map(mapChatTaskToPracticeTask);
+      setTasks(taskList);
+      setTaskSource("chat-assigned");
+      setTaskTopic(parsed.topic);
+      setUsingLinkedBundle(true);
+
+      const preferredTask = preferredTaskName
+        ? taskList.find((t) => t.task_name.toLowerCase() === preferredTaskName.toLowerCase())
+        : null;
+      const selected = preferredTask || taskList[0] || null;
+      setSelectedTask(selected);
+      setCode(selected?.starter_code || "");
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const loadTasksByTopic = async (topic, preferredTaskName = "") => {
+    if (topic && loadFromLinkedBundle(topic, preferredTaskName)) return;
+
     const query = topic ? `?topic=${encodeURIComponent(topic)}` : "";
     const taskRes = await api.get(`/practice/tasks${query}`);
     const taskList = taskRes.data.tasks || [];
+
+    setUsingLinkedBundle(false);
     setTasks(taskList);
     setTaskSource(taskRes.data.source || "default");
     setTaskTopic(taskRes.data.topic || topic || "");
+
     const preferredTask = preferredTaskName
       ? taskList.find((t) => t.task_name.toLowerCase() === preferredTaskName.toLowerCase())
       : null;
@@ -48,21 +89,22 @@ export default function PracticePage() {
     setPageError("");
     try {
       const [topicRes, activityRes] = await Promise.all([api.get("/practice/topics"), api.get("/practice/mine")]);
-      setTopicCatalog(topicRes.data.topics || []);
-      if (linkedTopicParam) {
-        const knownTopic =
-          (topicRes.data.topics || []).find((t) => t.topic === linkedTopicParam)?.topic || linkedTopicParam;
-        setSelectedTopic(knownTopic);
-        await loadTasksByTopic(knownTopic, linkedTaskParam);
-      } else {
-        const defaultTopic = (topicRes.data.topics || [])[0]?.topic || "";
-        if (defaultTopic) {
-          setSelectedTopic(defaultTopic);
-          await loadTasksByTopic(defaultTopic, linkedTaskParam);
-        } else {
-          await loadTasksByTopic("", linkedTaskParam);
-        }
+      const catalog = [...(topicRes.data.topics || [])];
+
+      if (linkedTopicParam && !catalog.some((t) => t.topic === linkedTopicParam)) {
+        catalog.unshift({ topic: linkedTopicParam, tasks: [] });
       }
+      setTopicCatalog(catalog);
+
+      if (linkedTopicParam) {
+        setSelectedTopic(linkedTopicParam);
+        await loadTasksByTopic(linkedTopicParam, linkedTaskParam);
+      } else {
+        const defaultTopic = catalog[0]?.topic || "";
+        setSelectedTopic(defaultTopic);
+        await loadTasksByTopic(defaultTopic, linkedTaskParam);
+      }
+
       setActivities(activityRes.data || []);
     } catch (err) {
       setPageError(err.response?.data?.error || "Failed to load practice lab.");
@@ -107,9 +149,7 @@ export default function PracticePage() {
     setPageError("");
     setSubmitSuccess("");
     try {
-      const res = await api.post("/practice/run", {
-        source_code: code,
-      });
+      const res = await api.post("/practice/run", { source_code: code });
       setRunOutput({
         stdout: res.data.stdout || "",
         stderr: res.data.stderr || "",
@@ -118,7 +158,6 @@ export default function PracticePage() {
         runner: res.data.runner || "",
       });
     } catch (err) {
-      setPageError("");
       setRunOutput({
         stdout: "",
         stderr: err.response?.data?.error || "Run failed",
@@ -148,7 +187,7 @@ export default function PracticePage() {
       });
       setTimeSpent(0);
       const res = await api.get("/practice/mine");
-      setActivities(res.data);
+      setActivities(res.data || []);
       setSubmitSuccess("Practice activity saved.");
     } catch (err) {
       setSubmitError(err.response?.data?.error || "Failed to save practice activity.");
@@ -233,29 +272,31 @@ export default function PracticePage() {
           {linkedTopicParam && (
             <div className="alert alert-primary py-2">
               Synced from chat topic: <strong>{linkedTopicParam}</strong>
-              {linkedTaskParam && (
-                <>
-                  {" "} | Task: <strong>{linkedTaskParam}</strong>
-                </>
-              )}
+              {linkedTaskParam && <> | Task: <strong>{linkedTaskParam}</strong></>}
+              {usingLinkedBundle && <> | Using exact chat-assigned tasks</>}
             </div>
           )}
+
           <p className="mb-2">Time spent: {timeSpent}s</p>
           {pageError && <div className="alert alert-danger py-2">{pageError}</div>}
           {submitError && <div className="alert alert-danger py-2">{submitError}</div>}
           {submitSuccess && <div className="alert alert-success py-2">{submitSuccess}</div>}
           {pageLoading && <div className="alert alert-info py-2">Loading tasks and activity...</div>}
+
           <p className="mb-1 text-muted">
             Task Source: <strong>{
-              taskSource === "ai"
-                ? "AI generated"
-                : taskSource === "catalog"
-                  ? "Topic catalog"
-                  : "Default task bank"
+              taskSource === "chat-assigned"
+                ? "Directly assigned from chat"
+                : taskSource === "ai"
+                  ? "AI generated"
+                  : taskSource === "catalog"
+                    ? "Topic catalog"
+                    : "Default task bank"
             }</strong>
           </p>
           {taskTopic && <p className="mb-2 text-muted">Current Topic: <strong>{taskTopic}</strong></p>}
           <p className="mb-2 text-muted">Tasks Loaded: <strong>{tasks.length}</strong></p>
+
           <div className="d-flex gap-2 mb-3">
             <select
               className="form-select"
@@ -287,6 +328,7 @@ export default function PracticePage() {
               Load Topic Tasks
             </button>
           </div>
+
           <button className="btn btn-sm btn-outline-dark mb-3" onClick={loadPracticeData} disabled={pageLoading}>
             {pageLoading ? "Refreshing..." : "Refresh Tasks"}
           </button>
@@ -324,6 +366,7 @@ export default function PracticePage() {
               Download Solution
             </button>
           </div>
+
           {downloadError && <div className="alert alert-danger py-2 mt-2 mb-0">{downloadError}</div>}
 
           {(runOutput.stdout || runOutput.stderr || runOutput.status || loading) && (

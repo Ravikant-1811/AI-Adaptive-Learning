@@ -62,6 +62,17 @@ export default function ChatbotPage() {
       const res = await api.post("/chat/", { question: asked });
       setResponse({ ...res.data, askedQuestion: asked });
       setAutoPack(res.data.auto_resources || []);
+      if (res.data?.practice?.topic && Array.isArray(res.data?.practice?.tasks)) {
+        localStorage.setItem(
+          "linkedPracticeBundle",
+          JSON.stringify({
+            topic: res.data.practice.topic,
+            source: res.data.practice.source || "chat",
+            tasks: res.data.practice.tasks,
+            saved_at: Date.now(),
+          })
+        );
+      }
       setQuestion("");
       const latest = await api.get("/chat/history");
       setHistory(latest.data);
