@@ -73,10 +73,7 @@ def ask_chatbot():
     result["practice"] = {
         "topic": question,
         "source": practice_source,
-        "tasks": [
-            {"task_name": t["task_name"], "description": t["description"]}
-            for t in practice_tasks
-        ],
+        "tasks": practice_tasks,
     }
     return jsonify(result)
 
