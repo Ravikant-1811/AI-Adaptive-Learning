@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
 from app.extensions import db
 
 
@@ -58,3 +59,22 @@ class Download(db.Model):
     content_type = db.Column(db.String(50), nullable=False)
     file_path = db.Column(db.String(255), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PasswordResetToken(db.Model):
+    __tablename__ = "password_reset_tokens"
+
+    token = db.Column(db.String(128), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.user_id"), nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    @staticmethod
+    def create_for_user(user_id: int, ttl_minutes: int = 30) -> "PasswordResetToken":
+        return PasswordResetToken(
+            token=secrets.token_urlsafe(48),
+            user_id=user_id,
+            expires_at=datetime.utcnow() + timedelta(minutes=max(5, ttl_minutes)),
+            used=False,
+        )

@@ -1,8 +1,9 @@
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.extensions import db
-from app.models import User
+from app.models import User, PasswordResetToken
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -17,6 +18,8 @@ def register():
 
     if not name or not email or not password:
         return jsonify({"error": "name, email, and password are required"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "password must be at least 6 characters"}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "email already exists"}), 409
@@ -66,3 +69,53 @@ def me():
 @jwt_required()
 def logout():
     return jsonify({"message": "logout successful on client token removal"})
+
+
+@auth_bp.post("/forgot-password")
+def forgot_password():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"error": "email is required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    # Avoid account enumeration by returning a success response in all cases.
+    if not user:
+        return jsonify({"message": "If email exists, reset instructions were generated."})
+
+    token_row = PasswordResetToken.create_for_user(user.user_id, ttl_minutes=30)
+    db.session.add(token_row)
+    db.session.commit()
+    return jsonify(
+        {
+            "message": "Password reset token generated.",
+            "reset_token": token_row.token,
+        }
+    )
+
+
+@auth_bp.post("/reset-password")
+def reset_password():
+    data = request.get_json() or {}
+    token = data.get("token", "").strip()
+    new_password = data.get("new_password", "")
+
+    if not token or not new_password:
+        return jsonify({"error": "token and new_password are required"}), 400
+    if len(new_password) < 6:
+        return jsonify({"error": "new_password must be at least 6 characters"}), 400
+
+    token_row = PasswordResetToken.query.filter_by(token=token, used=False).first()
+    if not token_row:
+        return jsonify({"error": "invalid or used reset token"}), 400
+    if token_row.expires_at < datetime.utcnow():
+        return jsonify({"error": "reset token has expired"}), 400
+
+    user = User.query.get(token_row.user_id)
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+
+    user.password_hash = generate_password_hash(new_password)
+    token_row.used = True
+    db.session.commit()
+    return jsonify({"message": "password reset successful"})

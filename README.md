@@ -79,7 +79,7 @@ Complete full-stack project implementing adaptive learning based on Visual, Audi
 8. (Optional) Add Judge0 credentials in `.env` for real Java compilation
 9. `python3 run.py`
 
-Backend runs on: `http://127.0.0.1:5000`
+Backend runs on: `http://127.0.0.1:5001`
 
 ## Frontend Setup
 1. `cd /Users/ravikantupadhyay/Documents/industry\ snap/frontend`
@@ -93,7 +93,7 @@ Frontend runs on: `http://127.0.0.1:5173`
 No default users are pre-created. Register from UI first.
 
 ## API Overview
-- Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`
+- Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/auth/forgot-password`, `/api/auth/reset-password`
 - Style: `/api/style/questions`, `/api/style/generate-questions`, `/api/style/select`, `/api/style/submit-test`, `/api/style/mine`
 - Chat: `/api/chat/`, `/api/chat/history`
 - Practice: `/api/practice/tasks`, `/api/practice/run`, `/api/practice/submit`, `/api/practice/mine`
@@ -105,3 +105,6 @@ No default users are pre-created. Register from UI first.
 - If `OPENAI_API_KEY` is missing, the app falls back to default static questions and fallback chatbot content.
 - Judge0 integration is already wired in `backend/app/services/lab_runner.py`.
 - Without Judge0 keys, run-code uses a simulation fallback for offline demo.
+- API root health checks:
+  - `GET /` returns API info
+  - `GET /api/health` returns service health

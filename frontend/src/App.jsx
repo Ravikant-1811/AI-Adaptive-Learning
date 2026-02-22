@@ -2,6 +2,7 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RegisterPage from "./pages/RegisterPage";
 import LoginPage from "./pages/LoginPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import LearningStylePage from "./pages/LearningStylePage";
 import ChatbotPage from "./pages/ChatbotPage";
@@ -13,6 +14,7 @@ export default function App() {
       <Routes>
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route
           path="/style"
@@ -47,6 +49,7 @@ export default function App() {
           }
         />
 
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </div>

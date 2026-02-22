@@ -34,6 +34,14 @@ def create_app():
     def health():
         return {"status": "ok"}
 
+    @app.get("/")
+    def root():
+        return {
+            "name": "Adaptive AI Learning Platform API",
+            "status": "ok",
+            "health": "/api/health",
+        }
+
     with app.app_context():
         from app import models
 

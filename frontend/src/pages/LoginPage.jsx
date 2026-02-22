@@ -32,7 +32,8 @@ export default function LoginPage() {
           <input type="password" className="form-control" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <button className="btn brand-btn text-white">Login</button>
         </form>
-        <p className="mt-3 mb-0">No account? <Link to="/register">Register</Link></p>
+        <p className="mt-3 mb-1">No account? <Link to="/register">Register</Link></p>
+        <p className="mb-0"><Link to="/reset-password">Forgot password?</Link></p>
       </div>
     </div>
   );
