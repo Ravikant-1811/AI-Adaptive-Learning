@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import api from "../services/api";
 
@@ -15,6 +16,7 @@ function formatStyle(style) {
 }
 
 export default function ChatbotPage() {
+  const navigate = useNavigate();
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState(null);
   const [history, setHistory] = useState([]);
@@ -110,6 +112,12 @@ export default function ChatbotPage() {
     }
   };
 
+  const openPracticeForTopic = (topic) => {
+    const cleanTopic = (topic || response?.askedQuestion || question || "").trim();
+    if (!cleanTopic) return;
+    navigate(`/practice?topic=${encodeURIComponent(cleanTopic)}`);
+  };
+
   return (
     <>
       <NavBar />
@@ -144,6 +152,12 @@ export default function ChatbotPage() {
                       <pre className="chat-text">{msg.text}</pre>
                       {msg.role === "assistant" && (
                         <div className="d-flex flex-wrap gap-2 mt-2">
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => openPracticeForTopic(msg.sourceQuestion)}
+                          >
+                            Practice This Topic
+                          </button>
                           <button
                             className="btn btn-sm btn-outline-warning"
                             onClick={() => downloadContent("task_sheet", msg.sourceQuestion, msg.text)}
@@ -207,6 +221,13 @@ export default function ChatbotPage() {
               />
               <button className="btn brand-btn text-white" onClick={() => ask()} disabled={loading}>
                 {loading ? "Thinking..." : "Ask"}
+              </button>
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => openPracticeForTopic()}
+                disabled={loading && !response}
+              >
+                Open Practice
               </button>
             </div>
           </section>

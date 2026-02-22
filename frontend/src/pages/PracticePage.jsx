@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import api from "../services/api";
 
 export default function PracticePage() {
+  const [searchParams] = useSearchParams();
+  const linkedTopicParam = (searchParams.get("topic") || "").trim();
   const [style, setStyle] = useState(null);
   const [styleLoading, setStyleLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
@@ -42,12 +45,19 @@ export default function PracticePage() {
     try {
       const [topicRes, activityRes] = await Promise.all([api.get("/practice/topics"), api.get("/practice/mine")]);
       setTopicCatalog(topicRes.data.topics || []);
-      const defaultTopic = (topicRes.data.topics || [])[0]?.topic || "";
-      if (defaultTopic) {
-        setSelectedTopic(defaultTopic);
-        await loadTasksByTopic(defaultTopic);
+      if (linkedTopicParam) {
+        const knownTopic =
+          (topicRes.data.topics || []).find((t) => t.topic === linkedTopicParam)?.topic || linkedTopicParam;
+        setSelectedTopic(knownTopic);
+        await loadTasksByTopic(knownTopic);
       } else {
-        await loadTasksByTopic("");
+        const defaultTopic = (topicRes.data.topics || [])[0]?.topic || "";
+        if (defaultTopic) {
+          setSelectedTopic(defaultTopic);
+          await loadTasksByTopic(defaultTopic);
+        } else {
+          await loadTasksByTopic("");
+        }
       }
       setActivities(activityRes.data || []);
     } catch (err) {
@@ -69,7 +79,7 @@ export default function PracticePage() {
   useEffect(() => {
     if (style !== "kinesthetic") return;
     loadPracticeData();
-  }, [style]);
+  }, [style, linkedTopicParam]);
 
   useEffect(() => {
     if (style !== "kinesthetic") return;
@@ -216,6 +226,11 @@ export default function PracticePage() {
       <div className="container pb-5">
         <div className="glass-card p-4 mb-4">
           <h4>Virtual Practice Lab (Java)</h4>
+          {linkedTopicParam && (
+            <div className="alert alert-primary py-2">
+              Synced from chat topic: <strong>{linkedTopicParam}</strong>
+            </div>
+          )}
           <p className="mb-2">Time spent: {timeSpent}s</p>
           {pageError && <div className="alert alert-danger py-2">{pageError}</div>}
           {submitError && <div className="alert alert-danger py-2">{submitError}</div>}
