@@ -1,110 +1,94 @@
 # AI-Powered Adaptive Learning Platform
 
-Complete full-stack project implementing adaptive learning based on Visual, Auditory, and Kinesthetic styles.
+Adaptive AI learning platform with personalized delivery by learning style (Visual, Auditory, Kinesthetic), chatbot + synced practice lab, downloads, and progress tracking.
 
-## Final Feature Checklist (As Required)
+## Core Features
+- Authentication: register/login/logout + password reset
+- Learning style: direct selection or AI-generated MCQ assessment
+- Adaptive dashboard with metrics
+- Style-aware AI chatbot (visual/auditory/kinesthetic outputs)
+- Chat-to-practice synchronization
+- Java virtual lab with run + submit + tracking
+- Download generation/history
 
-### 1. User Authentication
-- User registration (`name`, `email`, `password`)
-- Password hashing (Werkzeug hash)
-- JWT login/session flow
-- Logout endpoint + client-side token clear
+## Tech Stack
+- Frontend: React + Vite + Bootstrap
+- Backend: Flask + SQLAlchemy + JWT
+- AI: OpenAI API (text + optional TTS)
+- Practice execution: Judge0 (optional) + local Java/simulation fallback
+- Production DB: PostgreSQL
 
-### 2. Learning Style Identification
-- Option 1: Direct selection (`Visual`, `Auditory`, `Kinesthetic`)
-- Option 2: MCQ psychological test (`20` questions)
-- AI-generated test mode (auto-generated questions with fallback)
-- Score calculation + style detection
-- Learning style and scores stored in DB
+## Local Development
 
-### 3. Adaptive Dashboard
-- Shows user name
-- Shows detected learning style and scores
-- Chatbot access
-- Download history
-- Practice lab access (kinesthetic)
+### Backend
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python3 run.py
+```
+Backend: `http://127.0.0.1:5001`
 
-### 4. AI Chatbot (Adaptive Response)
-- Style-aware responses:
-  - Visual: diagram + video/GIF support + downloadable notes
-  - Auditory: audio-style script + audio player + downloadable audio
-  - Kinesthetic: guided coding/task response + practice workflow
-- Chat history persisted
-- Auto AI learning pack generated per ask:
-  - PDF notes
-  - Audio script / audio file flow
-  - Task sheet
-  - Solution
+### Frontend
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
+Frontend: `http://127.0.0.1:5173` (or next available port)
 
-### 5. Virtual Practice Lab (Kinesthetic)
-- In-browser Java code editor
-- Topic-linked tasks (AI from latest chat topic with fallback task bank)
-- Run code feature (Judge0 + resilient simulation fallback)
-- Code submission
-- Completion status tracking
-- Time spent tracking
+## Production Deployment (Docker)
 
-### 6. Database Storage
-- `users`
-- `learning_style`
-- `chat_history`
-- `practice_activity`
-- `downloads`
+### 1. Configure secrets
+Edit `docker-compose.prod.yml` and change at minimum:
+- `SECRET_KEY`
+- `JWT_SECRET_KEY`
+- `POSTGRES_PASSWORD`
 
-### 7. Downloadable Learning Resources
-- Visual: notes + video-style content
-- Auditory: audio file/script
-- Kinesthetic: task sheet + solution
-- Download metadata stored per user
+Also export optional AI variables before run:
+```bash
+export OPENAI_API_KEY="your_key"
+export OPENAI_MODEL="gpt-4o-mini"
+```
 
-### 8. System Flow Logic
-- On login: checks learning style
-- If style missing: redirects to style test/selection
-- Generates style-adaptive AI content
-- Saves chat history
-- Saves downloads
+### 2. Build and run
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
 
-## Project Structure
-- `/Users/ravikantupadhyay/Documents/industry snap/backend`
-- `/Users/ravikantupadhyay/Documents/industry snap/frontend`
+### 3. Access
+- Frontend (Nginx): `http://localhost:8080`
+- Backend API: `http://localhost:5001`
+- Health: `http://localhost:5001/api/health`
+- Readiness: `http://localhost:5001/api/ready`
 
-## Backend Setup
-1. `cd /Users/ravikantupadhyay/Documents/industry\ snap/backend`
-2. `python3 -m venv .venv`
-3. `source .venv/bin/activate`
-4. `pip install -r requirements.txt`
-5. `cp .env.example .env`
-6. Add `OPENAI_API_KEY` in `.env` to enable ChatGPT-based questionnaire and chatbot
-7. (Optional) Add `OPENAI_TTS_MODEL` and `OPENAI_TTS_VOICE` for audio generation
-8. (Optional) Add Judge0 credentials in `.env` for real Java compilation
-9. `python3 run.py`
+### 4. Stop
+```bash
+docker compose -f docker-compose.prod.yml down
+```
 
-Backend runs on: `http://127.0.0.1:5001`
+## Production Hardening Included
+- Gunicorn backend server (`backend/Dockerfile`)
+- PostgreSQL-backed compose stack
+- Nginx frontend serving built React app (`frontend/Dockerfile`, `frontend/nginx.conf`)
+- API readiness endpoint (`/api/ready`) with DB check
+- SQLite lock mitigation for local mode (WAL + timeout)
+- Environment-based CORS and secret validation in production
 
-## Frontend Setup
-1. `cd /Users/ravikantupadhyay/Documents/industry\ snap/frontend`
-2. `cp .env.example .env`
-3. `npm install`
-4. `npm run dev`
+## Important Files
+- Backend app config: `backend/app/__init__.py`
+- Backend WSGI entry: `backend/wsgi.py`
+- Backend image: `backend/Dockerfile`
+- Frontend image: `frontend/Dockerfile`
+- Frontend Nginx config: `frontend/nginx.conf`
+- Production compose: `docker-compose.prod.yml`
 
-Frontend runs on: `http://127.0.0.1:5173`
-
-## Default Credentials
-No default users are pre-created. Register from UI first.
-
-## API Overview
+## API Summary
 - Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/auth/forgot-password`, `/api/auth/reset-password`
 - Style: `/api/style/questions`, `/api/style/generate-questions`, `/api/style/select`, `/api/style/submit-test`, `/api/style/mine`
 - Chat: `/api/chat/`, `/api/chat/history`
-- Practice: `/api/practice/tasks`, `/api/practice/run`, `/api/practice/submit`, `/api/practice/mine`
+- Practice: `/api/practice/topics`, `/api/practice/tasks`, `/api/practice/run`, `/api/practice/submit`, `/api/practice/mine`
 - Downloads: `/api/downloads/`, `/api/downloads/mine`, `/api/downloads/file/<download_id>`
-
-## Notes
-- ChatGPT integration is implemented in `backend/app/services/openai_service.py`.
-- AI learning asset generation is implemented in `backend/app/services/adaptive_content_service.py`.
-- If `OPENAI_API_KEY` is missing, the app falls back to default static questions and fallback chatbot content.
-- Judge0 integration is already wired in `backend/app/services/lab_runner.py`.
-- Without Judge0 keys, run-code uses a simulation fallback for offline demo.
-- API root health checks:
-  - `GET /` returns API info
-  - `GET /api/health` returns service health

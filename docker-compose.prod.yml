@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: adaptive_learning
+      POSTGRES_USER: adaptive_user
+      POSTGRES_PASSWORD: adaptive_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adaptive_user -d adaptive_learning"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      PORT: 5001
+      SECRET_KEY: change-this-in-production
+      JWT_SECRET_KEY: change-this-too
+      DATABASE_URL: postgresql+psycopg2://adaptive_user:adaptive_pass@db:5432/adaptive_learning
+      CORS_ORIGINS: http://localhost:8080
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_TTS_MODEL: ${OPENAI_TTS_MODEL:-gpt-4o-mini-tts}
+      OPENAI_TTS_VOICE: ${OPENAI_TTS_VOICE:-alloy}
+      JUDGE0_BASE_URL: ${JUDGE0_BASE_URL:-}
+      JUDGE0_API_KEY: ${JUDGE0_API_KEY:-}
+      JUDGE0_API_HOST: ${JUDGE0_API_HOST:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5001:5001"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
