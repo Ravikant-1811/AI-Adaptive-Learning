@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import api from "../services/api";
@@ -17,6 +17,7 @@ function formatStyle(style) {
 
 export default function ChatbotPage() {
   const navigate = useNavigate();
+  const chatWindowRef = useRef(null);
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState(null);
   const [history, setHistory] = useState([]);
@@ -51,6 +52,12 @@ export default function ChatbotPage() {
       },
     ]);
   }, [history]);
+
+  useEffect(() => {
+    const node = chatWindowRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, [conversation.length, loading]);
 
   const ask = async (prefill) => {
     const asked = (prefill || question).trim();
@@ -154,7 +161,7 @@ export default function ChatbotPage() {
             {error && <div className="alert alert-danger py-2">{error}</div>}
             {downloadError && <div className="alert alert-danger py-2">{downloadError}</div>}
 
-            <div className="chat-window mb-3">
+            <div ref={chatWindowRef} className="chat-window mb-3">
               {conversation.length === 0 ? (
                 <div className="chat-empty text-muted">
                   Start by asking a topic. Responses are adapted to your learning style.
