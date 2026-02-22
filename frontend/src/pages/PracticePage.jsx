@@ -6,6 +6,7 @@ import api from "../services/api";
 export default function PracticePage() {
   const [searchParams] = useSearchParams();
   const linkedTopicParam = (searchParams.get("topic") || "").trim();
+  const linkedTaskParam = (searchParams.get("task") || "").trim();
   const [style, setStyle] = useState(null);
   const [styleLoading, setStyleLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
@@ -26,16 +27,19 @@ export default function PracticePage() {
   const [topicCatalog, setTopicCatalog] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState("");
 
-  const loadTasksByTopic = async (topic) => {
+  const loadTasksByTopic = async (topic, preferredTaskName = "") => {
     const query = topic ? `?topic=${encodeURIComponent(topic)}` : "";
     const taskRes = await api.get(`/practice/tasks${query}`);
     const taskList = taskRes.data.tasks || [];
     setTasks(taskList);
     setTaskSource(taskRes.data.source || "default");
     setTaskTopic(taskRes.data.topic || topic || "");
-    const first = taskList[0] || null;
-    setSelectedTask(first);
-    setCode(first?.starter_code || "");
+    const preferredTask = preferredTaskName
+      ? taskList.find((t) => t.task_name.toLowerCase() === preferredTaskName.toLowerCase())
+      : null;
+    const selected = preferredTask || taskList[0] || null;
+    setSelectedTask(selected);
+    setCode(selected?.starter_code || "");
   };
 
   const loadPracticeData = async () => {
@@ -49,14 +53,14 @@ export default function PracticePage() {
         const knownTopic =
           (topicRes.data.topics || []).find((t) => t.topic === linkedTopicParam)?.topic || linkedTopicParam;
         setSelectedTopic(knownTopic);
-        await loadTasksByTopic(knownTopic);
+        await loadTasksByTopic(knownTopic, linkedTaskParam);
       } else {
         const defaultTopic = (topicRes.data.topics || [])[0]?.topic || "";
         if (defaultTopic) {
           setSelectedTopic(defaultTopic);
-          await loadTasksByTopic(defaultTopic);
+          await loadTasksByTopic(defaultTopic, linkedTaskParam);
         } else {
-          await loadTasksByTopic("");
+          await loadTasksByTopic("", linkedTaskParam);
         }
       }
       setActivities(activityRes.data || []);
@@ -79,7 +83,7 @@ export default function PracticePage() {
   useEffect(() => {
     if (style !== "kinesthetic") return;
     loadPracticeData();
-  }, [style, linkedTopicParam]);
+  }, [style, linkedTopicParam, linkedTaskParam]);
 
   useEffect(() => {
     if (style !== "kinesthetic") return;
@@ -229,6 +233,11 @@ export default function PracticePage() {
           {linkedTopicParam && (
             <div className="alert alert-primary py-2">
               Synced from chat topic: <strong>{linkedTopicParam}</strong>
+              {linkedTaskParam && (
+                <>
+                  {" "} | Task: <strong>{linkedTaskParam}</strong>
+                </>
+              )}
             </div>
           )}
           <p className="mb-2">Time spent: {timeSpent}s</p>

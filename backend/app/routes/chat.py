@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models import LearningStyle, ChatHistory, Download
 from app.services.chatbot_service import generate_adaptive_response
 from app.services.download_service import create_download_file
+from app.services.practice_task_service import generate_practice_tasks_from_topic
 
 
 chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
@@ -47,6 +48,7 @@ def ask_chatbot():
         return jsonify({"error": "learning style not found"}), 400
 
     result = generate_adaptive_response(question, style_row.learning_style)
+    practice_tasks, practice_source = generate_practice_tasks_from_topic(question, count=3)
     try:
         auto_resources = _auto_generate_resources(
             user_id=user_id,
@@ -68,6 +70,14 @@ def ask_chatbot():
         return jsonify({"error": "temporary database issue. please retry"}), 503
 
     result["auto_resources"] = auto_resources
+    result["practice"] = {
+        "topic": question,
+        "source": practice_source,
+        "tasks": [
+            {"task_name": t["task_name"], "description": t["description"]}
+            for t in practice_tasks
+        ],
+    }
     return jsonify(result)
 
 

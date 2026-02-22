@@ -186,6 +186,41 @@ export default function ChatbotPage() {
                 {response.assets?.gif_url && <img src={response.assets.gif_url} alt="visual gif" className="asset-image" />}
                 {response.assets?.audio_url && <audio controls src={response.assets.audio_url} className="w-100 mt-2" />}
                 {response.assets?.starter_code && <pre className="chat-text mt-2">{response.assets.starter_code}</pre>}
+                {response.practice?.tasks?.length > 0 && (
+                  <div className="mt-3">
+                    <p className="mb-2"><strong>Assigned Practice Tasks ({response.practice.source})</strong></p>
+                    <ul className="mb-2">
+                      {response.practice.tasks.map((task) => (
+                        <li key={task.task_name}>
+                          <strong>{task.task_name}</strong>: {task.description}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="d-flex flex-wrap gap-2">
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={() =>
+                          openPracticeForTopic(response.practice.topic)
+                        }
+                      >
+                        Start Topic Practice
+                      </button>
+                      {response.practice.tasks.map((task) => (
+                        <button
+                          key={`start-${task.task_name}`}
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() =>
+                            navigate(
+                              `/practice?topic=${encodeURIComponent(response.practice.topic)}&task=${encodeURIComponent(task.task_name)}`
+                            )
+                          }
+                        >
+                          Start: {task.task_name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {autoPack.length > 0 && (
                   <div className="mt-3">
                     <p className="mb-2"><strong>Auto AI Learning Pack</strong></p>
