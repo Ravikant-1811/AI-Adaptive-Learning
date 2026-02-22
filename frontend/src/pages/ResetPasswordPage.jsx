@@ -42,48 +42,56 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="container py-5" style={{ maxWidth: 560 }}>
-      <div className="glass-card p-4 mb-3">
-        <h3 className="mb-3">Forgot Password</h3>
-        {error && <div className="alert alert-danger py-2">{error}</div>}
-        {message && <div className="alert alert-success py-2">{message}</div>}
-        <form onSubmit={requestToken} className="d-grid gap-3">
-          <input
-            className="form-control"
-            placeholder="Registered email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <button className="btn btn-outline-primary">Generate Reset Token</button>
-        </form>
-        {generatedToken && (
-          <div className="alert alert-warning py-2 mt-3 mb-0">
-            Demo reset token: <code>{generatedToken}</code>
-          </div>
-        )}
-      </div>
+    <div className="auth-shell">
+      <div className="auth-grid">
+        <section className="auth-panel">
+          <p className="page-kicker text-white-50 mb-2">Account Recovery</p>
+          <h2 className="mb-2">Reset Access Securely</h2>
+          <p className="mb-0 text-white-50">
+            Generate a token and set a new password to continue your adaptive learning journey.
+          </p>
+        </section>
 
-      <div className="glass-card p-4">
-        <h3 className="mb-3">Reset Password</h3>
-        <form onSubmit={resetPassword} className="d-grid gap-3">
-          <input
-            className="form-control"
-            placeholder="Reset token"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-          />
-          <input
-            type="password"
-            className="form-control"
-            placeholder="New password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-          <button className="btn brand-btn text-white">Reset Password</button>
-        </form>
-        <p className="mt-3 mb-0">
-          Back to <Link to="/login">Login</Link>
-        </p>
+        <section className="glass-card auth-form">
+          <h3 className="mb-3">Forgot Password</h3>
+          {error && <div className="alert alert-danger py-2">{error}</div>}
+          {message && <div className="alert alert-success py-2">{message}</div>}
+          <form onSubmit={requestToken} className="d-grid gap-3 mb-3">
+            <input
+              className="form-control"
+              placeholder="Registered email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button className="btn surface-btn">Generate Reset Token</button>
+          </form>
+          {generatedToken && (
+            <div className="alert alert-warning py-2 mt-1 mb-3">
+              Demo reset token: <code>{generatedToken}</code>
+            </div>
+          )}
+
+          <h3 className="mb-3">Reset Password</h3>
+          <form onSubmit={resetPassword} className="d-grid gap-3">
+            <input
+              className="form-control"
+              placeholder="Reset token"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+            />
+            <input
+              type="password"
+              className="form-control"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+            <button className="btn brand-btn">Reset Password</button>
+          </form>
+          <p className="mt-3 mb-0">
+            Back to <Link to="/login">Login</Link>
+          </p>
+        </section>
       </div>
     </div>
   );

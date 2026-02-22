@@ -11,16 +11,18 @@ export default function NavBar() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg bg-white border-bottom mb-4">
+    <nav className="navbar navbar-expand-lg app-nav mb-4">
       <div className="container">
-        <Link className="navbar-brand fw-bold" to="/dashboard">
-          Adaptive Learning
+        <Link className="navbar-brand d-flex align-items-center gap-2" to="/dashboard">
+          <span className="brand-mark">AL</span>
+          <span className="brand-name">Adaptive Learning</span>
         </Link>
-        <div className="navbar-nav ms-auto gap-2">
-          <Link className="nav-link" to="/dashboard">Dashboard</Link>
-          <Link className="nav-link" to="/chat">Chatbot</Link>
-          <Link className="nav-link" to="/practice">Practice</Link>
-          <button className="btn btn-outline-danger btn-sm" onClick={onLogout}>Logout</button>
+
+        <div className="navbar-nav ms-auto gap-2 align-items-center">
+          <Link className="nav-link nav-pill" to="/dashboard">Dashboard</Link>
+          <Link className="nav-link nav-pill" to="/chat">AI Chat</Link>
+          <Link className="nav-link nav-pill" to="/practice">Practice</Link>
+          <button className="btn btn-sm surface-btn" onClick={onLogout}>Logout</button>
         </div>
       </div>
     </nav>

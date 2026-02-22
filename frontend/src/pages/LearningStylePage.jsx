@@ -87,21 +87,33 @@ export default function LearningStylePage() {
   return (
     <>
       <NavBar />
-      <div className="container pb-5" style={{ maxWidth: 920 }}>
-        <div className="glass-card p-4">
-          <h4 className="mb-2">Identify Your Learning Style</h4>
-          <p className="text-muted">Choose direct selection or start an AI-generated 20-question psychological test.</p>
+      <div className="container page-wrap" style={{ maxWidth: 980 }}>
+        <header className="page-header">
+          <p className="page-kicker mb-1">Personalization Setup</p>
+          <h2 className="page-title">Identify Your Learning Style</h2>
+          <p className="page-subtitle">Choose directly or run the AI-generated psychometric test for better adaptive results.</p>
+        </header>
 
-          <div className="d-flex gap-2 mb-3">
-            <button className="btn btn-outline-primary" onClick={() => setMode("select")}>Direct Selection</button>
-            <button className="btn btn-outline-secondary" onClick={() => setMode("test")}>Know Your Learning Style (Test)</button>
+        <div className="glass-card p-4">
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            <button className={`btn ${mode === "select" ? "brand-btn" : "surface-btn"}`} onClick={() => setMode("select")}>Direct Selection</button>
+            <button className={`btn ${mode === "test" ? "brand-btn" : "surface-btn"}`} onClick={() => setMode("test")}>Know Your Learning Style (Test)</button>
           </div>
 
           {mode === "select" && (
-            <div className="d-flex flex-wrap gap-2">
-              <button className="btn btn-primary" onClick={() => saveDirect("visual")}>Visual</button>
-              <button className="btn btn-success" onClick={() => saveDirect("auditory")}>Auditory</button>
-              <button className="btn btn-warning" onClick={() => saveDirect("kinesthetic")}>Kinesthetic</button>
+            <div className="choice-grid">
+              <article className="choice-card" onClick={() => saveDirect("visual")}>
+                <h6 className="mb-1">Visual</h6>
+                <p className="mb-0 text-muted">Diagrams, mapped steps, and flow understanding.</p>
+              </article>
+              <article className="choice-card" onClick={() => saveDirect("auditory")}>
+                <h6 className="mb-1">Auditory</h6>
+                <p className="mb-0 text-muted">Voice-guided explanations and spoken sequencing.</p>
+              </article>
+              <article className="choice-card" onClick={() => saveDirect("kinesthetic")}>
+                <h6 className="mb-1">Kinesthetic</h6>
+                <p className="mb-0 text-muted">Hands-on coding tasks with guided practice.</p>
+              </article>
             </div>
           )}
 
@@ -113,11 +125,11 @@ export default function LearningStylePage() {
                   Style detected: <strong>{result.learning_style}</strong> (V:{result.visual_score}, A:{result.auditory_score}, K:{result.kinesthetic_score})
                 </div>
               )}
-              <div className="border rounded p-3 mb-3 d-flex justify-content-between align-items-center">
+              <div className="soft-card p-3 mb-3 d-flex justify-content-between align-items-center">
                 <small className="text-muted mb-0">
                   Question source: <strong>{source === "ai" ? "AI-generated" : "Default fallback"}</strong>
                 </small>
-                <button className="btn btn-sm btn-outline-primary" onClick={() => generateAiQuestions(true)} disabled={loadingQuestions}>
+                <button className="btn btn-sm surface-btn" onClick={() => generateAiQuestions(true)} disabled={loadingQuestions}>
                   {loadingQuestions ? "Generating..." : "Regenerate Questions"}
                 </button>
               </div>
@@ -126,7 +138,7 @@ export default function LearningStylePage() {
 
               <div className="d-grid gap-3">
                 {questions.map((q) => (
-                  <div key={q.id} className="border rounded p-3">
+                  <div key={q.id} className="soft-card p-3">
                     <strong>{q.id}. {q.question}</strong>
                     <div className="mt-2 d-grid gap-2">
                       {q.options.map((opt) => (
@@ -145,7 +157,7 @@ export default function LearningStylePage() {
                 ))}
               </div>
               <button
-                className="btn brand-btn text-white mt-3"
+                className="btn brand-btn mt-3"
                 onClick={submitTest}
                 disabled={loadingQuestions || submitting || questions.length < 10}
               >

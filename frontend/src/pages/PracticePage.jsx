@@ -266,9 +266,15 @@ export default function PracticePage() {
   return (
     <>
       <NavBar />
-      <div className="container pb-5">
+      <div className="container page-wrap">
+        <header className="page-header">
+          <p className="page-kicker mb-1">Hands-on Workspace</p>
+          <h2 className="page-title">Virtual Java Practice Lab</h2>
+          <p className="page-subtitle">Run, submit, and track coding tasks synced from chatbot learning topics.</p>
+        </header>
+
         <div className="glass-card p-4 mb-4">
-          <h4>Virtual Practice Lab (Java)</h4>
+          <h4>Interactive Task Runner</h4>
           {linkedTopicParam && (
             <div className="alert alert-primary py-2">
               Synced from chat topic: <strong>{linkedTopicParam}</strong>
@@ -311,7 +317,7 @@ export default function PracticePage() {
               ))}
             </select>
             <button
-              className="btn btn-outline-primary"
+              className="btn surface-btn"
               disabled={pageLoading || !selectedTopic}
               onClick={async () => {
                 setPageLoading(true);
@@ -359,10 +365,10 @@ export default function PracticePage() {
             <button className="btn btn-warning" onClick={submit} disabled={!selectedTask || submitting}>
               {submitting ? "Submitting..." : "Submit Activity"}
             </button>
-            <button className="btn btn-outline-secondary" onClick={() => downloadPracticeAsset("task_sheet")}>
+            <button className="btn surface-btn" onClick={() => downloadPracticeAsset("task_sheet")}>
               Download Task
             </button>
-            <button className="btn btn-outline-success" onClick={() => downloadPracticeAsset("solution")}>
+            <button className="btn surface-btn" onClick={() => downloadPracticeAsset("solution")}>
               Download Solution
             </button>
           </div>

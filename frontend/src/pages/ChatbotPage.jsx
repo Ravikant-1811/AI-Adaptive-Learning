@@ -132,7 +132,13 @@ export default function ChatbotPage() {
   return (
     <>
       <NavBar />
-      <div className="container pb-5">
+      <div className="container page-wrap">
+        <header className="page-header">
+          <p className="page-kicker mb-1">Adaptive Assistant</p>
+          <h2 className="page-title">AI Chat + Instant Practice Mapping</h2>
+          <p className="page-subtitle">Ask any concept, get style-based teaching, and jump directly into matching tasks.</p>
+        </header>
+
         <div className="chatbot-layout">
           <section className="glass-card p-3 p-md-4 chatbot-main">
             <div className="chatbot-header mb-3">
@@ -269,7 +275,7 @@ export default function ChatbotPage() {
                 {loading ? "Thinking..." : "Ask"}
               </button>
               <button
-                className="btn btn-outline-primary"
+                className="btn surface-btn"
                 onClick={() => openPracticeForTopic()}
                 disabled={loading && !response}
               >
@@ -292,15 +298,15 @@ export default function ChatbotPage() {
             <div className="d-grid gap-2 mb-4">
               {style === "visual" && (
                 <>
-                  <button className="btn btn-sm btn-outline-primary" onClick={() => downloadContent("pdf")} disabled={!response}>Download Notes</button>
-                  <button className="btn btn-sm btn-outline-primary" onClick={() => downloadContent("video")} disabled={!response}>Download Video Summary</button>
+                  <button className="btn btn-sm surface-btn" onClick={() => downloadContent("pdf")} disabled={!response}>Download Notes</button>
+                  <button className="btn btn-sm surface-btn" onClick={() => downloadContent("video")} disabled={!response}>Download Video Summary</button>
                 </>
               )}
               {style === "auditory" && (
-                <button className="btn btn-sm btn-outline-success" onClick={() => downloadContent("audio")} disabled={!response}>Download Audio Script</button>
+                <button className="btn btn-sm surface-btn" onClick={() => downloadContent("audio")} disabled={!response}>Download Audio Script</button>
               )}
-              <button className="btn btn-sm btn-outline-warning" onClick={() => downloadContent("task_sheet")} disabled={!response}>Download Task Sheet</button>
-              <button className="btn btn-sm btn-outline-warning" onClick={() => downloadContent("solution")} disabled={!response}>Download Solution</button>
+              <button className="btn btn-sm surface-btn" onClick={() => downloadContent("task_sheet")} disabled={!response}>Download Task Sheet</button>
+              <button className="btn btn-sm surface-btn" onClick={() => downloadContent("solution")} disabled={!response}>Download Solution</button>
             </div>
 
             <h6 className="mb-2">Recent Questions</h6>
