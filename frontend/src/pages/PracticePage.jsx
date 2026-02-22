@@ -20,20 +20,35 @@ export default function PracticePage() {
   const [downloadError, setDownloadError] = useState("");
   const [taskSource, setTaskSource] = useState("default");
   const [taskTopic, setTaskTopic] = useState("");
+  const [topicCatalog, setTopicCatalog] = useState([]);
+  const [selectedTopic, setSelectedTopic] = useState("");
+
+  const loadTasksByTopic = async (topic) => {
+    const query = topic ? `?topic=${encodeURIComponent(topic)}` : "";
+    const taskRes = await api.get(`/practice/tasks${query}`);
+    const taskList = taskRes.data.tasks || [];
+    setTasks(taskList);
+    setTaskSource(taskRes.data.source || "default");
+    setTaskTopic(taskRes.data.topic || topic || "");
+    const first = taskList[0] || null;
+    setSelectedTask(first);
+    setCode(first?.starter_code || "");
+  };
 
   const loadPracticeData = async () => {
     if (style !== "kinesthetic") return;
     setPageLoading(true);
     setPageError("");
     try {
-      const [taskRes, activityRes] = await Promise.all([api.get("/practice/tasks"), api.get("/practice/mine")]);
-      const taskList = taskRes.data.tasks || [];
-      setTasks(taskList);
-      setTaskSource(taskRes.data.source || "default");
-      setTaskTopic(taskRes.data.topic || "");
-      const first = taskList[0] || null;
-      setSelectedTask(first);
-      setCode(first?.starter_code || "");
+      const [topicRes, activityRes] = await Promise.all([api.get("/practice/topics"), api.get("/practice/mine")]);
+      setTopicCatalog(topicRes.data.topics || []);
+      const defaultTopic = (topicRes.data.topics || [])[0]?.topic || "";
+      if (defaultTopic) {
+        setSelectedTopic(defaultTopic);
+        await loadTasksByTopic(defaultTopic);
+      } else {
+        await loadTasksByTopic("");
+      }
       setActivities(activityRes.data || []);
     } catch (err) {
       setPageError(err.response?.data?.error || "Failed to load practice lab.");
@@ -207,10 +222,47 @@ export default function PracticePage() {
           {submitSuccess && <div className="alert alert-success py-2">{submitSuccess}</div>}
           {pageLoading && <div className="alert alert-info py-2">Loading tasks and activity...</div>}
           <p className="mb-1 text-muted">
-            Task Source: <strong>{taskSource === "ai" ? "AI from latest chatbot question" : "Default task bank"}</strong>
+            Task Source: <strong>{
+              taskSource === "ai"
+                ? "AI generated"
+                : taskSource === "catalog"
+                  ? "Topic catalog"
+                  : "Default task bank"
+            }</strong>
           </p>
           {taskTopic && <p className="mb-2 text-muted">Current Topic: <strong>{taskTopic}</strong></p>}
           <p className="mb-2 text-muted">Tasks Loaded: <strong>{tasks.length}</strong></p>
+          <div className="d-flex gap-2 mb-3">
+            <select
+              className="form-select"
+              value={selectedTopic}
+              onChange={(e) => setSelectedTopic(e.target.value)}
+              disabled={pageLoading || topicCatalog.length === 0}
+            >
+              {topicCatalog.map((item) => (
+                <option key={item.topic} value={item.topic}>
+                  {item.topic}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-outline-primary"
+              disabled={pageLoading || !selectedTopic}
+              onClick={async () => {
+                setPageLoading(true);
+                setPageError("");
+                try {
+                  await loadTasksByTopic(selectedTopic);
+                } catch (err) {
+                  setPageError(err.response?.data?.error || "Failed to load selected topic tasks.");
+                } finally {
+                  setPageLoading(false);
+                }
+              }}
+            >
+              Load Topic Tasks
+            </button>
+          </div>
           <button className="btn btn-sm btn-outline-dark mb-3" onClick={loadPracticeData} disabled={pageLoading}>
             {pageLoading ? "Refreshing..." : "Refresh Tasks"}
           </button>
@@ -263,6 +315,26 @@ export default function PracticePage() {
         </div>
 
         <div className="glass-card p-4">
+          <h5 className="mb-3">All Topics and Tasks</h5>
+          {topicCatalog.length === 0 ? (
+            <p className="text-muted">No topics available.</p>
+          ) : (
+            <div className="d-grid gap-3 mb-4">
+              {topicCatalog.map((topicItem) => (
+                <div key={topicItem.topic} className="border rounded p-3">
+                  <h6 className="mb-2">{topicItem.topic}</h6>
+                  <ul className="mb-0">
+                    {(topicItem.tasks || []).map((task) => (
+                      <li key={`${topicItem.topic}-${task.task_name}`}>
+                        <strong>{task.task_name}</strong>: {task.description}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+
           <h5>Recent Activity</h5>
           {activities.length === 0 ? (
             <p className="text-muted mb-0">No activity yet.</p>

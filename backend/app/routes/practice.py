@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models import PracticeActivity, LearningStyle, ChatHistory
 from app.services.lab_runner import run_java_code
-from app.services.practice_task_service import generate_practice_tasks_from_topic
+from app.services.practice_task_service import generate_practice_tasks_from_topic, get_topic_catalog
 
 
 practice_bp = Blueprint("practice", __name__, url_prefix="/api/practice")
@@ -26,14 +26,28 @@ def tasks():
     if guard:
         return guard
 
-    latest_chat = (
-        ChatHistory.query.filter_by(user_id=user_id)
-        .order_by(ChatHistory.timestamp.desc())
-        .first()
-    )
-    topic = latest_chat.question if latest_chat else "Java exception handling"
+    requested_topic = request.args.get("topic", "").strip()
+    if requested_topic:
+        topic = requested_topic
+    else:
+        latest_chat = (
+            ChatHistory.query.filter_by(user_id=user_id)
+            .order_by(ChatHistory.timestamp.desc())
+            .first()
+        )
+        topic = latest_chat.question if latest_chat else "Java exception handling"
     generated_tasks, source = generate_practice_tasks_from_topic(topic, count=3)
     return jsonify({"tasks": generated_tasks, "topic": topic, "source": source})
+
+
+@practice_bp.get("/topics")
+@jwt_required()
+def topics():
+    user_id = int(get_jwt_identity())
+    guard = _ensure_kinesthetic(user_id)
+    if guard:
+        return guard
+    return jsonify({"topics": get_topic_catalog()})
 
 
 @practice_bp.post("/run")
