@@ -64,7 +64,10 @@ def submit_activity():
     task_name = data.get("task_name", "").strip()
     status = data.get("status", "completed").strip() or "completed"
     code_submitted = data.get("code_submitted", "")
-    time_spent = int(data.get("time_spent", 0))
+    try:
+        time_spent = max(0, int(data.get("time_spent", 0)))
+    except (TypeError, ValueError):
+        return jsonify({"error": "time_spent must be a valid integer"}), 400
 
     if not task_name:
         return jsonify({"error": "task_name is required"}), 400
