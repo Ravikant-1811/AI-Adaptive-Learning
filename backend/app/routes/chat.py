@@ -103,3 +103,16 @@ def chat_history():
             for r in rows
         ]
     )
+
+
+@chat_bp.delete("/history")
+@jwt_required()
+def clear_history():
+    user_id = int(get_jwt_identity())
+    try:
+        ChatHistory.query.filter_by(user_id=user_id).delete()
+        db.session.commit()
+        return jsonify({"message": "chat history cleared"})
+    except SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({"error": "failed to clear chat history"}), 500
