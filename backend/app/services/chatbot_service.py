@@ -42,13 +42,76 @@ def _generate_chatgpt_explanation(question: str, style: str) -> str | None:
     return chatgpt_text(system_prompt, user_prompt, temperature=0.5)
 
 
-def _visual_chart_url() -> str:
-    chart_json = (
-        '{"type":"radar","data":{"labels":["Concept","Flow","Examples","Revision","Practice"],'
-        '"datasets":[{"label":"Visual Plan","data":[95,90,85,88,70],'
-        '"backgroundColor":"rgba(77,107,255,0.2)","borderColor":"#4d6bff"}]}}'
+def _svg_data_uri(svg: str) -> str:
+    return f"data:image/svg+xml;utf8,{quote(svg, safe='')}"
+
+
+def _visual_bar_chart_url() -> str:
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'>"
+        "<rect width='640' height='360' fill='#f7f9ff'/>"
+        "<text x='24' y='36' font-size='22' font-family='Arial' fill='#22304a'>Mastery Bar Graph</text>"
+        "<line x1='60' y1='300' x2='600' y2='300' stroke='#9fb0d0' stroke-width='2'/>"
+        "<rect x='100' y='110' width='70' height='190' rx='8' fill='#4d6bff'/>"
+        "<rect x='220' y='78' width='70' height='222' rx='8' fill='#7a4dff'/>"
+        "<rect x='340' y='93' width='70' height='207' rx='8' fill='#9a27f0'/>"
+        "<rect x='460' y='123' width='70' height='177' rx='8' fill='#00a7c4'/>"
+        "<text x='112' y='325' font-size='15' font-family='Arial' fill='#22304a'>Concept</text>"
+        "<text x='242' y='325' font-size='15' font-family='Arial' fill='#22304a'>Flow</text>"
+        "<text x='347' y='325' font-size='15' font-family='Arial' fill='#22304a'>Examples</text>"
+        "<text x='465' y='325' font-size='15' font-family='Arial' fill='#22304a'>Practice</text>"
+        "</svg>"
     )
-    return f"https://quickchart.io/chart?c={quote(chart_json, safe='')}"
+    return _svg_data_uri(svg)
+
+
+def _visual_mermaid_url(topic: str) -> str:
+    label = (topic or "Concept").strip().replace("<", "").replace(">", "")[:40]
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' width='760' height='240' viewBox='0 0 760 240'>"
+        "<rect width='760' height='240' fill='#f7f9ff'/>"
+        "<defs><marker id='arr' markerWidth='10' markerHeight='10' refX='8' refY='3' orient='auto'>"
+        "<path d='M0,0 L0,6 L9,3 z' fill='#4d6bff'/></marker></defs>"
+        f"<rect x='20' y='82' width='120' height='56' rx='10' fill='#e8eeff' stroke='#4d6bff'/>"
+        f"<text x='34' y='116' font-size='15' font-family='Arial' fill='#22304a'>{label}</text>"
+        "<rect x='170' y='82' width='120' height='56' rx='10' fill='#efe8ff' stroke='#7a4dff'/>"
+        "<text x='194' y='116' font-size='15' font-family='Arial' fill='#22304a'>Core Idea</text>"
+        "<rect x='320' y='82' width='140' height='56' rx='10' fill='#f4e8ff' stroke='#9a27f0'/>"
+        "<text x='334' y='116' font-size='15' font-family='Arial' fill='#22304a'>Step-by-step</text>"
+        "<rect x='490' y='82' width='110' height='56' rx='10' fill='#e8fbff' stroke='#00a7c4'/>"
+        "<text x='523' y='116' font-size='15' font-family='Arial' fill='#22304a'>Example</text>"
+        "<rect x='630' y='82' width='110' height='56' rx='10' fill='#e7f7ee' stroke='#2ea05f'/>"
+        "<text x='650' y='116' font-size='15' font-family='Arial' fill='#22304a'>Practice</text>"
+        "<line x1='140' y1='110' x2='170' y2='110' stroke='#4d6bff' stroke-width='2.5' marker-end='url(#arr)'/>"
+        "<line x1='290' y1='110' x2='320' y2='110' stroke='#4d6bff' stroke-width='2.5' marker-end='url(#arr)'/>"
+        "<line x1='460' y1='110' x2='490' y2='110' stroke='#4d6bff' stroke-width='2.5' marker-end='url(#arr)'/>"
+        "<line x1='600' y1='110' x2='630' y2='110' stroke='#4d6bff' stroke-width='2.5' marker-end='url(#arr)'/>"
+        "</svg>"
+    )
+    return _svg_data_uri(svg)
+
+
+def _visual_chart_url() -> str:
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'>"
+        "<rect width='640' height='360' fill='#f7f9ff'/>"
+        "<text x='24' y='36' font-size='22' font-family='Arial' fill='#22304a'>Learning Radar Graph</text>"
+        "<circle cx='320' cy='190' r='120' fill='none' stroke='#d8e0f5'/>"
+        "<circle cx='320' cy='190' r='90' fill='none' stroke='#d8e0f5'/>"
+        "<circle cx='320' cy='190' r='60' fill='none' stroke='#d8e0f5'/>"
+        "<circle cx='320' cy='190' r='30' fill='none' stroke='#d8e0f5'/>"
+        "<line x1='320' y1='70' x2='320' y2='310' stroke='#d8e0f5'/>"
+        "<line x1='206' y1='115' x2='434' y2='265' stroke='#d8e0f5'/>"
+        "<line x1='206' y1='265' x2='434' y2='115' stroke='#d8e0f5'/>"
+        "<polygon points='320,82 412,142 385,244 257,244 228,159' fill='rgba(77,107,255,0.25)' stroke='#4d6bff' stroke-width='3'/>"
+        "<text x='290' y='60' font-size='14' font-family='Arial' fill='#22304a'>Concept</text>"
+        "<text x='434' y='140' font-size='14' font-family='Arial' fill='#22304a'>Flow</text>"
+        "<text x='412' y='270' font-size='14' font-family='Arial' fill='#22304a'>Examples</text>"
+        "<text x='205' y='270' font-size='14' font-family='Arial' fill='#22304a'>Revision</text>"
+        "<text x='175' y='145' font-size='14' font-family='Arial' fill='#22304a'>Practice</text>"
+        "</svg>"
+    )
+    return _svg_data_uri(svg)
 
 
 def generate_adaptive_response(question: str, style: str) -> dict:
@@ -65,6 +128,8 @@ def generate_adaptive_response(question: str, style: str) -> dict:
             "assets": {
                 "diagram": "Input -> Try Block -> Exception Raised? -> Catch -> Finally -> Continue",
                 "graph_image_url": _visual_chart_url(),
+                "bar_graph_image_url": _visual_bar_chart_url(),
+                "flowchart_image_url": _visual_mermaid_url(topic),
                 "video_url": "https://www.youtube.com/watch?v=1XAfapkBQjk",
                 "gif_url": "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
                 "suggested_downloads": ["pdf", "video"],

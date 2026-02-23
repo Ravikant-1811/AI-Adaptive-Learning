@@ -262,11 +262,29 @@ export default function ChatbotPage() {
             <div className="asset-panel mb-3">
               <h6 className="mb-2">Learning-Style Assets</h6>
               {response.assets.diagram && <p className="mb-2"><strong>Flow:</strong> {response.assets.diagram}</p>}
-              {response.assets.graph_image_url && (
-                <img src={response.assets.graph_image_url} alt="visual graph" className="asset-image mb-2" />
-              )}
-              {response.assets.gif_url && (
-                <img src={response.assets.gif_url} alt="visual gif" className="asset-image mb-2" />
+              {(response.assets.graph_image_url || response.assets.bar_graph_image_url || response.assets.flowchart_image_url || response.assets.gif_url) && (
+                <div className="visual-gallery mb-2">
+                  {response.assets.graph_image_url && (
+                    <a href={response.assets.graph_image_url} target="_blank" rel="noreferrer">
+                      <img src={response.assets.graph_image_url} alt="visual radar graph" className="asset-image" />
+                    </a>
+                  )}
+                  {response.assets.bar_graph_image_url && (
+                    <a href={response.assets.bar_graph_image_url} target="_blank" rel="noreferrer">
+                      <img src={response.assets.bar_graph_image_url} alt="visual bar graph" className="asset-image" />
+                    </a>
+                  )}
+                  {response.assets.flowchart_image_url && (
+                    <a href={response.assets.flowchart_image_url} target="_blank" rel="noreferrer">
+                      <img src={response.assets.flowchart_image_url} alt="visual flowchart" className="asset-image" />
+                    </a>
+                  )}
+                  {response.assets.gif_url && (
+                    <a href={response.assets.gif_url} target="_blank" rel="noreferrer">
+                      <img src={response.assets.gif_url} alt="visual gif" className="asset-image" />
+                    </a>
+                  )}
+                </div>
               )}
               {response.assets.video_url && (
                 <p className="mb-2"><a href={response.assets.video_url} target="_blank" rel="noreferrer">Open Video Explanation</a></p>

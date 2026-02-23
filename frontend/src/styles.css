@@ -380,6 +380,18 @@ a {
   margin-top: 0.5rem;
 }
 
+.visual-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.visual-gallery .asset-image {
+  margin-top: 0;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
 .composer {
   display: flex;
   gap: 0.6rem;
@@ -548,7 +560,8 @@ a {
   .metric-grid,
   .choice-grid,
   .recommend-grid,
-  .vak-quick-grid {
+  .vak-quick-grid,
+  .visual-gallery {
     grid-template-columns: 1fr;
   }
 
