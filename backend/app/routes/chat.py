@@ -13,7 +13,9 @@ chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
 def _auto_generate_resources(user_id: int, style: str, topic: str, base_content: str) -> list[dict]:
     resources = []
-    content_types = ["pdf", "audio", "task_sheet", "solution"]
+    # Keep chat response fast and stable by generating lightweight assets synchronously.
+    # Audio can still be generated explicitly from the Downloads module on demand.
+    content_types = ["pdf", "task_sheet", "solution"]
     for ctype in content_types:
         asset_text = (
             f"Topic: {topic}\n"
