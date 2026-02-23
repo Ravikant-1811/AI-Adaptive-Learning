@@ -322,13 +322,15 @@ def _merge_with_defaults(tasks: list[dict], count: int) -> list[dict]:
     return merged
 
 
-def generate_practice_tasks_from_topic(topic: str, count: int = 3) -> tuple[list[dict], str]:
+def generate_practice_tasks_from_topic(topic: str, count: int = 3, allow_ai: bool = True) -> tuple[list[dict], str]:
     clean_topic = (topic or "").strip()
     safe_count = max(1, min(5, int(count)))
     bank_tasks = _topic_tasks_from_bank(clean_topic, safe_count)
     if bank_tasks:
         return bank_tasks, "catalog"
     if not clean_topic or _is_low_signal_topic(clean_topic):
+        return DEFAULT_TASKS[:safe_count], "default"
+    if not allow_ai:
         return DEFAULT_TASKS[:safe_count], "default"
 
     system_prompt = (

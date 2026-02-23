@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
-from pathlib import Path
 from app.extensions import db
 from app.models import LearningStyle, ChatHistory, Download
 from app.services.chatbot_service import generate_adaptive_response
@@ -38,28 +37,6 @@ def _auto_generate_resources(user_id: int, style: str, topic: str, base_content:
     return resources
 
 
-def _add_auditory_audio_resource(user_id: int, topic: str, script_text: str) -> dict | None:
-    try:
-        payload = (
-            f"Topic: {topic}\n"
-            f"Audio explanation script:\n\n"
-            f"{script_text[:3500]}"
-        )
-        file_path = create_download_file(user_id, "audio", payload)
-        if Path(file_path).suffix.lower() not in {".mp3", ".wav", ".ogg", ".m4a"}:
-            return None
-        row = Download(user_id=user_id, content_type="audio", file_path=file_path)
-        db.session.add(row)
-        db.session.flush()
-        return {
-            "download_id": row.download_id,
-            "content_type": "audio",
-            "download_url": f"/api/downloads/file/{row.download_id}",
-        }
-    except Exception:
-        return None
-
-
 @chat_bp.post("/")
 @jwt_required()
 def ask_chatbot():
@@ -73,7 +50,8 @@ def ask_chatbot():
         return jsonify({"error": "learning style not found"}), 400
 
     result = generate_adaptive_response(question, style_row.learning_style)
-    practice_tasks, practice_source = generate_practice_tasks_from_topic(question, count=3)
+    # Keep chat API fast by avoiding a second AI call in this request path.
+    practice_tasks, practice_source = generate_practice_tasks_from_topic(question, count=3, allow_ai=False)
     try:
         auto_resources = _auto_generate_resources(
             user_id=user_id,
@@ -81,13 +59,6 @@ def ask_chatbot():
             topic=question,
             base_content=result["text"],
         )
-        if style_row.learning_style == "auditory":
-            audio_script = ((result.get("assets") or {}).get("audio_script") or result["text"]).strip()
-            audio_resource = _add_auditory_audio_resource(user_id, question, audio_script)
-            if audio_resource:
-                auto_resources.append(audio_resource)
-                result["audio_download_id"] = audio_resource["download_id"]
-                result["audio_download_url"] = audio_resource["download_url"]
 
         history = ChatHistory(
             user_id=user_id,
