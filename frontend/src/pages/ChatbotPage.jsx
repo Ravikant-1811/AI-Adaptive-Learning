@@ -4,10 +4,10 @@ import NavBar from "../components/NavBar";
 import api from "../services/api";
 
 const QUICK_PROMPTS = [
-  "Explain exception handling in Java",
+  "Explain Java basics for beginners",
   "How does try-catch-finally work?",
-  "Difference between interface and abstract class",
-  "Give me a beginner Java debugging task",
+  "Give me one practical coding task",
+  "What are common mistakes in Java?",
 ];
 
 function formatStyle(style) {
@@ -29,6 +29,17 @@ export default function ChatbotPage() {
   const [downloadError, setDownloadError] = useState("");
   const [autoPack, setAutoPack] = useState([]);
   const [audioSrc, setAudioSrc] = useState("");
+  const [quickPrompts, setQuickPrompts] = useState(QUICK_PROMPTS);
+
+  const loadPrompts = async (topic = "") => {
+    try {
+      const res = await api.get("/chat/suggestions", { params: { topic } });
+      const prompts = Array.isArray(res.data?.prompts) ? res.data.prompts : [];
+      setQuickPrompts(prompts.length ? prompts : QUICK_PROMPTS);
+    } catch {
+      setQuickPrompts(QUICK_PROMPTS);
+    }
+  };
 
   const loadInitial = async () => {
     setBootLoading(true);
@@ -37,6 +48,8 @@ export default function ChatbotPage() {
       const [styleRes, historyRes] = await Promise.all([api.get("/style/mine"), api.get("/chat/history")]);
       setStyle(styleRes.data.learning_style || null);
       setHistory(historyRes.data || []);
+      const latestTopic = historyRes.data?.[0]?.question || "";
+      await loadPrompts(latestTopic);
     } catch {
       setError("Failed to load chat. Please refresh.");
     } finally {
@@ -86,6 +99,7 @@ export default function ChatbotPage() {
     try {
       const res = await api.post("/chat/", { question: asked });
       setResponse({ ...res.data, askedQuestion: asked });
+      await loadPrompts(asked);
       setAutoPack(res.data.auto_resources || []);
       if (audioSrc) {
         window.URL.revokeObjectURL(audioSrc);
@@ -189,13 +203,18 @@ export default function ChatbotPage() {
         <div className="glass-card p-3 p-md-4">
           <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
             <div className="d-flex gap-2 flex-wrap">
-              {QUICK_PROMPTS.map((p) => (
+              {quickPrompts.map((p) => (
                 <button key={p} className="btn btn-sm surface-btn" onClick={() => ask(p)} disabled={loading || bootLoading}>
                   {p}
                 </button>
               ))}
             </div>
-            <button className="btn btn-sm surface-btn" onClick={clearChat} disabled={loading || bootLoading}>Clear Chat</button>
+            <div className="d-flex gap-2">
+              <button className="btn btn-sm surface-btn" onClick={() => loadPrompts(question || response?.askedQuestion || "")} disabled={loading || bootLoading}>
+                New Suggestions
+              </button>
+              <button className="btn btn-sm surface-btn" onClick={clearChat} disabled={loading || bootLoading}>Clear Chat</button>
+            </div>
           </div>
 
           {error && <div className="alert alert-danger py-2">{error}</div>}
@@ -262,8 +281,13 @@ export default function ChatbotPage() {
             <div className="asset-panel mb-3">
               <h6 className="mb-2">Learning-Style Assets</h6>
               {response.assets.diagram && <p className="mb-2"><strong>Flow:</strong> {response.assets.diagram}</p>}
-              {(response.assets.graph_image_url || response.assets.bar_graph_image_url || response.assets.flowchart_image_url || response.assets.gif_url) && (
+              {(response.assets.graph_image_url || response.assets.bar_graph_image_url || response.assets.flowchart_image_url || response.assets.topic_image_url || response.assets.gif_url) && (
                 <div className="visual-gallery mb-2">
+                  {response.assets.topic_image_url && (
+                    <a href={response.assets.topic_image_url} target="_blank" rel="noreferrer">
+                      <img src={response.assets.topic_image_url} alt="visual concept map" className="asset-image" />
+                    </a>
+                  )}
                   {response.assets.graph_image_url && (
                     <a href={response.assets.graph_image_url} target="_blank" rel="noreferrer">
                       <img src={response.assets.graph_image_url} alt="visual radar graph" className="asset-image" />

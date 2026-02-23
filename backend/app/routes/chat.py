@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 from app.models import LearningStyle, ChatHistory, Download
-from app.services.chatbot_service import generate_adaptive_response
+from app.services.chatbot_service import generate_adaptive_response, get_quick_prompts
 from app.services.download_service import create_download_file
 from app.services.practice_task_service import generate_practice_tasks_from_topic
 
@@ -105,6 +105,29 @@ def chat_history():
             for r in rows
         ]
     )
+
+
+@chat_bp.get("/suggestions")
+@jwt_required()
+def chat_suggestions():
+    user_id = int(get_jwt_identity())
+    topic = (request.args.get("topic") or "").strip()
+    style_row = LearningStyle.query.get(user_id)
+    style = style_row.learning_style if style_row else "visual"
+    prompts = get_quick_prompts(topic or "Java basics", style)
+    return jsonify({"topic": topic or "Java basics", "prompts": prompts})
+
+
+@chat_bp.delete("/history/<int:chat_id>")
+@jwt_required()
+def delete_chat_item(chat_id: int):
+    user_id = int(get_jwt_identity())
+    row = ChatHistory.query.filter_by(chat_id=chat_id, user_id=user_id).first()
+    if not row:
+        return jsonify({"error": "chat not found"}), 404
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify({"message": "chat deleted", "chat_id": chat_id})
 
 
 @chat_bp.delete("/history")

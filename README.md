@@ -100,8 +100,40 @@ docker compose -f docker-compose.prod.yml down
 - Production compose: `docker-compose.prod.yml`
 
 ## API Summary
-- Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/auth/forgot-password`, `/api/auth/reset-password`
-- Style: `/api/style/questions`, `/api/style/generate-questions`, `/api/style/select`, `/api/style/submit-test`, `/api/style/mine`
-- Chat: `/api/chat/`, `/api/chat/history`
-- Practice: `/api/practice/topics`, `/api/practice/tasks`, `/api/practice/run`, `/api/practice/submit`, `/api/practice/mine`
-- Downloads: `/api/downloads/`, `/api/downloads/mine`, `/api/downloads/file/<download_id>`
+- Auth:
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - `POST /api/auth/logout`
+  - `GET /api/auth/me`
+  - `PUT /api/auth/me`
+  - `DELETE /api/auth/me`
+  - `POST /api/auth/forgot-password`
+  - `POST /api/auth/reset-password`
+- Style:
+  - `GET /api/style/questions`
+  - `POST /api/style/generate-questions`
+  - `POST /api/style/select`
+  - `POST /api/style/submit-test`
+  - `GET /api/style/mine`
+  - `DELETE /api/style/mine`
+- Chat:
+  - `POST /api/chat/`
+  - `GET /api/chat/history`
+  - `DELETE /api/chat/history`
+  - `DELETE /api/chat/history/<chat_id>`
+  - `GET /api/chat/suggestions?topic=<topic>`
+- Practice:
+  - `GET /api/practice/topics`
+  - `GET /api/practice/tasks?topic=<topic>`
+  - `POST /api/practice/run`
+  - `POST /api/practice/submit`
+  - `GET /api/practice/mine`
+  - `GET /api/practice/mine/<activity_id>`
+  - `PUT /api/practice/mine/<activity_id>`
+  - `DELETE /api/practice/mine/<activity_id>`
+- Downloads:
+  - `POST /api/downloads/`
+  - `GET /api/downloads/mine`
+  - `GET /api/downloads/mine/<download_id>`
+  - `DELETE /api/downloads/mine/<download_id>`
+  - `GET /api/downloads/file/<download_id>`

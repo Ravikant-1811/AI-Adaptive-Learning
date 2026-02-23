@@ -92,3 +92,41 @@ def my_downloads():
             for r in rows
         ]
     )
+
+
+@download_bp.get("/mine/<int:download_id>")
+@jwt_required()
+def get_download(download_id: int):
+    user_id = int(get_jwt_identity())
+    row = Download.query.filter_by(download_id=download_id, user_id=user_id).first()
+    if not row:
+        return jsonify({"error": "download not found"}), 404
+    return jsonify(
+        {
+            "download_id": row.download_id,
+            "content_type": row.content_type,
+            "file_path": row.file_path,
+            "download_url": f"/api/downloads/file/{row.download_id}",
+            "timestamp": row.timestamp.isoformat(),
+        }
+    )
+
+
+@download_bp.delete("/mine/<int:download_id>")
+@jwt_required()
+def delete_download(download_id: int):
+    user_id = int(get_jwt_identity())
+    row = Download.query.filter_by(download_id=download_id, user_id=user_id).first()
+    if not row:
+        return jsonify({"error": "download not found"}), 404
+
+    file_path = Path(row.file_path)
+    if file_path.exists() and file_path.is_file():
+        try:
+            file_path.unlink()
+        except OSError:
+            pass
+
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify({"message": "download deleted", "download_id": download_id})

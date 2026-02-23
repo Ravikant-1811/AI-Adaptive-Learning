@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.extensions import db
-from app.models import User, PasswordResetToken
+from app.models import User, PasswordResetToken, LearningStyle, ChatHistory, PracticeActivity, Download
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -65,10 +65,62 @@ def me():
     return jsonify({"user_id": user.user_id, "name": user.name, "email": user.email})
 
 
+@auth_bp.put("/me")
+@jwt_required()
+def update_me():
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+
+    data = request.get_json() or {}
+    if "name" in data:
+        name = str(data.get("name", "")).strip()
+        if not name:
+            return jsonify({"error": "name cannot be empty"}), 400
+        user.name = name
+
+    if "email" in data:
+        email = str(data.get("email", "")).strip().lower()
+        if not email:
+            return jsonify({"error": "email cannot be empty"}), 400
+        existing = User.query.filter(User.email == email, User.user_id != user_id).first()
+        if existing:
+            return jsonify({"error": "email already exists"}), 409
+        user.email = email
+
+    if "password" in data:
+        password = str(data.get("password", ""))
+        if len(password) < 6:
+            return jsonify({"error": "password must be at least 6 characters"}), 400
+        user.password_hash = generate_password_hash(password)
+
+    db.session.commit()
+    return jsonify({"message": "profile updated", "user": {"user_id": user.user_id, "name": user.name, "email": user.email}})
+
+
 @auth_bp.post("/logout")
 @jwt_required()
 def logout():
     return jsonify({"message": "logout successful on client token removal"})
+
+
+@auth_bp.delete("/me")
+@jwt_required()
+def delete_me():
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+
+    ChatHistory.query.filter_by(user_id=user_id).delete()
+    PracticeActivity.query.filter_by(user_id=user_id).delete()
+    Download.query.filter_by(user_id=user_id).delete()
+    LearningStyle.query.filter_by(user_id=user_id).delete()
+    PasswordResetToken.query.filter_by(user_id=user_id).delete()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "account deleted"})
 
 
 @auth_bp.post("/forgot-password")

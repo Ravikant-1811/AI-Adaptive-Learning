@@ -125,3 +125,83 @@ def my_activities():
             for r in rows
         ]
     )
+
+
+@practice_bp.get("/mine/<int:activity_id>")
+@jwt_required()
+def get_activity(activity_id: int):
+    user_id = int(get_jwt_identity())
+    guard = _ensure_kinesthetic(user_id)
+    if guard:
+        return guard
+
+    row = PracticeActivity.query.filter_by(activity_id=activity_id, user_id=user_id).first()
+    if not row:
+        return jsonify({"error": "activity not found"}), 404
+
+    return jsonify(
+        {
+            "activity_id": row.activity_id,
+            "task_name": row.task_name,
+            "status": row.status,
+            "code_submitted": row.code_submitted or "",
+            "time_spent": row.time_spent,
+            "created_at": row.created_at.isoformat(),
+            "updated_at": row.updated_at.isoformat(),
+        }
+    )
+
+
+@practice_bp.put("/mine/<int:activity_id>")
+@jwt_required()
+def update_activity(activity_id: int):
+    user_id = int(get_jwt_identity())
+    guard = _ensure_kinesthetic(user_id)
+    if guard:
+        return guard
+
+    row = PracticeActivity.query.filter_by(activity_id=activity_id, user_id=user_id).first()
+    if not row:
+        return jsonify({"error": "activity not found"}), 404
+
+    data = request.get_json() or {}
+    if "task_name" in data:
+        task_name = str(data.get("task_name", "")).strip()
+        if not task_name:
+            return jsonify({"error": "task_name cannot be empty"}), 400
+        row.task_name = task_name
+
+    if "status" in data:
+        status = str(data.get("status", "")).strip()
+        if not status:
+            return jsonify({"error": "status cannot be empty"}), 400
+        row.status = status
+
+    if "code_submitted" in data:
+        row.code_submitted = str(data.get("code_submitted", ""))
+
+    if "time_spent" in data:
+        try:
+            row.time_spent = max(0, int(data.get("time_spent", 0)))
+        except (TypeError, ValueError):
+            return jsonify({"error": "time_spent must be a valid integer"}), 400
+
+    db.session.commit()
+    return jsonify({"message": "activity updated", "activity_id": row.activity_id})
+
+
+@practice_bp.delete("/mine/<int:activity_id>")
+@jwt_required()
+def delete_activity(activity_id: int):
+    user_id = int(get_jwt_identity())
+    guard = _ensure_kinesthetic(user_id)
+    if guard:
+        return guard
+
+    row = PracticeActivity.query.filter_by(activity_id=activity_id, user_id=user_id).first()
+    if not row:
+        return jsonify({"error": "activity not found"}), 404
+
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify({"message": "activity deleted", "activity_id": activity_id})

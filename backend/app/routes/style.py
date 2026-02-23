@@ -99,3 +99,15 @@ def my_style():
             "kinesthetic_score": record.kinesthetic_score,
         }
     )
+
+
+@style_bp.delete("/mine")
+@jwt_required()
+def clear_style():
+    user_id = int(get_jwt_identity())
+    record = LearningStyle.query.get(user_id)
+    if not record:
+        return jsonify({"message": "learning style already empty"})
+    db.session.delete(record)
+    db.session.commit()
+    return jsonify({"message": "learning style removed"})
