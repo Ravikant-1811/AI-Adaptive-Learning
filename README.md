@@ -52,6 +52,8 @@ Also export optional AI variables before run:
 ```bash
 export OPENAI_API_KEY="your_key"
 export OPENAI_MODEL="gpt-4o-mini"
+export ELEVENLABS_API_KEY="your_elevenlabs_key"
+export ELEVENLABS_VOICE_ID="EXAVITQu4vr4xnSDxMaL"
 ```
 
 ### 2. Build and run
@@ -77,6 +79,17 @@ docker compose -f docker-compose.prod.yml down
 - API readiness endpoint (`/api/ready`) with DB check
 - SQLite lock mitigation for local mode (WAL + timeout)
 - Environment-based CORS and secret validation in production
+
+## TTS Audio Generation (Auditory Mode)
+- Auditory chat mode auto-generates downloadable audio.
+- Provider order:
+  1. ElevenLabs (`ELEVENLABS_API_KEY`)
+  2. OpenAI TTS (`OPENAI_API_KEY`)
+  3. Text fallback file if no TTS key works
+- Configure in `backend/.env`:
+  - `ELEVENLABS_API_KEY`
+  - `ELEVENLABS_VOICE_ID`
+  - `ELEVENLABS_MODEL_ID`
 
 ## Important Files
 - Backend app config: `backend/app/__init__.py`

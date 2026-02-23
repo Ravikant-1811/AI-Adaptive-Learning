@@ -9,6 +9,7 @@ import requests
 
 OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/speech"
+ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1/text-to-speech"
 
 
 def _extract_text(payload: dict[str, Any]) -> str:
@@ -114,8 +115,43 @@ def chatgpt_text(system_prompt: str, user_prompt: str, temperature: float = 0.4)
 
 
 def generate_tts_mp3(text: str, output_path: str) -> bool:
+    if not text.strip():
+        return False
+
+    # Prefer ElevenLabs when key is available.
+    eleven_api_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
+    eleven_voice_id = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL").strip()
+    eleven_model_id = os.getenv("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2").strip()
+    if eleven_api_key and eleven_voice_id:
+        try:
+            response = requests.post(
+                f"{ELEVENLABS_BASE_URL}/{eleven_voice_id}",
+                headers={
+                    "xi-api-key": eleven_api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                },
+                json={
+                    "text": text[:3500],
+                    "model_id": eleven_model_id,
+                    "voice_settings": {
+                        "stability": 0.45,
+                        "similarity_boost": 0.75,
+                    },
+                },
+                timeout=25,
+            )
+            response.raise_for_status()
+            out = Path(output_path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(response.content)
+            return True
+        except Exception:
+            # fall back to OpenAI TTS
+            pass
+
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key or not text.strip():
+    if not api_key:
         return False
 
     tts_model = os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts").strip()
