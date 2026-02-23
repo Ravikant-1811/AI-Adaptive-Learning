@@ -100,6 +100,21 @@ export default function ChatbotPage() {
         } catch {
           // no-op, audio remains optional
         }
+      } else if ((style || "").toLowerCase() === "auditory") {
+        // Fallback: explicitly generate audio if chat payload missed audio metadata.
+        try {
+          const created = await api.post("/downloads/", {
+            content_type: "audio",
+            topic: asked,
+            content: "",
+            base_content: res.data?.text || "",
+          });
+          const fileResp = await api.get(`/downloads/file/${created.data.download_id}`, { responseType: "blob" });
+          const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
+          setAudioSrc(blobUrl);
+        } catch {
+          setError("Audio generation failed. Please try again.");
+        }
       }
 
       if (res.data?.practice?.topic && Array.isArray(res.data?.practice?.tasks)) {
