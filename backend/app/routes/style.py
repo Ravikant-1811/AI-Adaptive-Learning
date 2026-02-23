@@ -32,12 +32,21 @@ def select_style():
     if style not in {"visual", "auditory", "kinesthetic"}:
         return jsonify({"error": "invalid learning style"}), 400
 
+    score_map = {
+        "visual": {"visual_score": 20, "auditory_score": 0, "kinesthetic_score": 0},
+        "auditory": {"visual_score": 0, "auditory_score": 20, "kinesthetic_score": 0},
+        "kinesthetic": {"visual_score": 0, "auditory_score": 0, "kinesthetic_score": 20},
+    }
+
     record = LearningStyle.query.get(user_id)
     if not record:
-        record = LearningStyle(user_id=user_id, learning_style=style)
+        record = LearningStyle(user_id=user_id, learning_style=style, **score_map[style])
         db.session.add(record)
     else:
         record.learning_style = style
+        record.visual_score = score_map[style]["visual_score"]
+        record.auditory_score = score_map[style]["auditory_score"]
+        record.kinesthetic_score = score_map[style]["kinesthetic_score"]
 
     db.session.commit()
     return jsonify({"message": "learning style saved", "learning_style": style})

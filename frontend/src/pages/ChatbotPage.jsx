@@ -28,6 +28,7 @@ export default function ChatbotPage() {
   const [error, setError] = useState("");
   const [downloadError, setDownloadError] = useState("");
   const [autoPack, setAutoPack] = useState([]);
+  const [audioSrc, setAudioSrc] = useState("");
 
   const loadInitial = async () => {
     setBootLoading(true);
@@ -68,6 +69,14 @@ export default function ChatbotPage() {
     node.scrollTop = node.scrollHeight;
   }, [conversation.length, loading]);
 
+  useEffect(() => {
+    return () => {
+      if (audioSrc) {
+        window.URL.revokeObjectURL(audioSrc);
+      }
+    };
+  }, [audioSrc]);
+
   const ask = async (prefill) => {
     const asked = (prefill || question).trim();
     if (!asked || loading) return;
@@ -78,6 +87,20 @@ export default function ChatbotPage() {
       const res = await api.post("/chat/", { question: asked });
       setResponse({ ...res.data, askedQuestion: asked });
       setAutoPack(res.data.auto_resources || []);
+      if (audioSrc) {
+        window.URL.revokeObjectURL(audioSrc);
+        setAudioSrc("");
+      }
+
+      if (res.data?.audio_download_id) {
+        try {
+          const fileResp = await api.get(`/downloads/file/${res.data.audio_download_id}`, { responseType: "blob" });
+          const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
+          setAudioSrc(blobUrl);
+        } catch {
+          // no-op, audio remains optional
+        }
+      }
 
       if (res.data?.practice?.topic && Array.isArray(res.data?.practice?.tasks)) {
         localStorage.setItem(
@@ -217,6 +240,30 @@ export default function ChatbotPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {response?.assets && (
+            <div className="asset-panel mb-3">
+              <h6 className="mb-2">Learning-Style Assets</h6>
+              {response.assets.diagram && <p className="mb-2"><strong>Flow:</strong> {response.assets.diagram}</p>}
+              {response.assets.graph_image_url && (
+                <img src={response.assets.graph_image_url} alt="visual graph" className="asset-image mb-2" />
+              )}
+              {response.assets.gif_url && (
+                <img src={response.assets.gif_url} alt="visual gif" className="asset-image mb-2" />
+              )}
+              {response.assets.video_url && (
+                <p className="mb-2"><a href={response.assets.video_url} target="_blank" rel="noreferrer">Open Video Explanation</a></p>
+              )}
+              {response.assets.audio_script && <pre className="chat-text mb-2">{response.assets.audio_script}</pre>}
+              {audioSrc && (
+                <div>
+                  <p className="mb-1"><strong>Audio Explanation</strong></p>
+                  <audio controls src={audioSrc} className="w-100" />
+                </div>
+              )}
+              {response.assets.starter_code && <pre className="chat-text">{response.assets.starter_code}</pre>}
             </div>
           )}
 

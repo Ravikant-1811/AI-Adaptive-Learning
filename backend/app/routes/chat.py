@@ -37,6 +37,26 @@ def _auto_generate_resources(user_id: int, style: str, topic: str, base_content:
     return resources
 
 
+def _add_auditory_audio_resource(user_id: int, topic: str, script_text: str) -> dict | None:
+    try:
+        payload = (
+            f"Topic: {topic}\n"
+            f"Audio explanation script:\n\n"
+            f"{script_text[:3500]}"
+        )
+        file_path = create_download_file(user_id, "audio", payload)
+        row = Download(user_id=user_id, content_type="audio", file_path=file_path)
+        db.session.add(row)
+        db.session.flush()
+        return {
+            "download_id": row.download_id,
+            "content_type": "audio",
+            "download_url": f"/api/downloads/file/{row.download_id}",
+        }
+    except Exception:
+        return None
+
+
 @chat_bp.post("/")
 @jwt_required()
 def ask_chatbot():
@@ -58,6 +78,14 @@ def ask_chatbot():
             topic=question,
             base_content=result["text"],
         )
+        if style_row.learning_style == "auditory":
+            audio_script = ((result.get("assets") or {}).get("audio_script") or result["text"]).strip()
+            audio_resource = _add_auditory_audio_resource(user_id, question, audio_script)
+            if audio_resource:
+                auto_resources.append(audio_resource)
+                result["audio_download_id"] = audio_resource["download_id"]
+                result["audio_download_url"] = audio_resource["download_url"]
+
         history = ChatHistory(
             user_id=user_id,
             question=question,

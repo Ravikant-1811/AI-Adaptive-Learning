@@ -1,4 +1,5 @@
 from app.services.openai_service import chatgpt_text
+from urllib.parse import quote
 
 
 def _fallback_response(question: str, style: str) -> str:
@@ -41,6 +42,15 @@ def _generate_chatgpt_explanation(question: str, style: str) -> str | None:
     return chatgpt_text(system_prompt, user_prompt, temperature=0.5)
 
 
+def _visual_chart_url() -> str:
+    chart_json = (
+        '{"type":"radar","data":{"labels":["Concept","Flow","Examples","Revision","Practice"],'
+        '"datasets":[{"label":"Visual Plan","data":[95,90,85,88,70],'
+        '"backgroundColor":"rgba(77,107,255,0.2)","borderColor":"#4d6bff"}]}}'
+    )
+    return f"https://quickchart.io/chart?c={quote(chart_json, safe='')}"
+
+
 def generate_adaptive_response(question: str, style: str) -> dict:
     topic = question.strip().rstrip("?")
     ai_text = _generate_chatgpt_explanation(question, style)
@@ -54,6 +64,7 @@ def generate_adaptive_response(question: str, style: str) -> dict:
             "text": text,
             "assets": {
                 "diagram": "Input -> Try Block -> Exception Raised? -> Catch -> Finally -> Continue",
+                "graph_image_url": _visual_chart_url(),
                 "video_url": "https://www.youtube.com/watch?v=1XAfapkBQjk",
                 "gif_url": "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
                 "suggested_downloads": ["pdf", "video"],
@@ -67,7 +78,6 @@ def generate_adaptive_response(question: str, style: str) -> dict:
             "text": text,
             "assets": {
                 "audio_script": f"Audio-style explanation for {topic}. {text}",
-                "audio_url": "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav",
                 "suggested_downloads": ["audio"],
             },
         }
