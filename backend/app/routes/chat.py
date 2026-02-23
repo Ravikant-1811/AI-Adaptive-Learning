@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
+from pathlib import Path
 from app.extensions import db
 from app.models import LearningStyle, ChatHistory, Download
 from app.services.chatbot_service import generate_adaptive_response
@@ -45,6 +46,8 @@ def _add_auditory_audio_resource(user_id: int, topic: str, script_text: str) -> 
             f"{script_text[:3500]}"
         )
         file_path = create_download_file(user_id, "audio", payload)
+        if Path(file_path).suffix.lower() not in {".mp3", ".wav", ".ogg", ".m4a"}:
+            return None
         row = Download(user_id=user_id, content_type="audio", file_path=file_path)
         db.session.add(row)
         db.session.flush()
