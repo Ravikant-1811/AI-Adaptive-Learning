@@ -64,6 +64,7 @@ def create_app():
     from app.routes.practice import practice_bp
     from app.routes.download import download_bp
     from app.routes.admin import admin_bp
+    from app.routes.dashboard import dashboard_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(style_bp)
@@ -71,6 +72,7 @@ def create_app():
     app.register_blueprint(practice_bp)
     app.register_blueprint(download_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(dashboard_bp)
 
     @app.get("/")
     def root():

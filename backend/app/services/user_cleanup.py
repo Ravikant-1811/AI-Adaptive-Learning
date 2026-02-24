@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from app.extensions import db
-from app.models import ChatHistory, Download, LearningStyle, PasswordResetToken, PracticeActivity, User
+from app.models import ChatFeedback, ChatHistory, Download, LearningStyle, PasswordResetToken, PracticeActivity, User
 
 
 def delete_user_with_related_data(user_id: int) -> bool:
@@ -19,6 +19,7 @@ def delete_user_with_related_data(user_id: int) -> bool:
                 pass
 
     ChatHistory.query.filter_by(user_id=user_id).delete()
+    ChatFeedback.query.filter_by(user_id=user_id).delete()
     PracticeActivity.query.filter_by(user_id=user_id).delete()
     Download.query.filter_by(user_id=user_id).delete()
     LearningStyle.query.filter_by(user_id=user_id).delete()

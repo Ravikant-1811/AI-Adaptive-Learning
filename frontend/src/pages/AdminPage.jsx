@@ -4,6 +4,7 @@ import api from "../services/api";
 
 export default function AdminPage() {
   const [summary, setSummary] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
   const [users, setUsers] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -14,11 +15,13 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const [summaryRes, usersRes] = await Promise.all([
+      const [summaryRes, analyticsRes, usersRes] = await Promise.all([
         api.get("/admin/summary"),
+        api.get("/admin/analytics"),
         api.get("/admin/users", { params: search ? { q: search } : {} }),
       ]);
       setSummary(summaryRes.data);
+      setAnalytics(analyticsRes.data || null);
       setUsers(usersRes.data || []);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to load admin panel.");
@@ -32,6 +35,8 @@ export default function AdminPage() {
   }, []);
 
   const metrics = useMemo(() => summary?.metrics || {}, [summary]);
+  const feedbackSummary = analytics?.feedback_summary || {};
+  const styleDist = analytics?.style_distribution || {};
 
   const onSearch = (e) => {
     e.preventDefault();
@@ -77,8 +82,48 @@ export default function AdminPage() {
             <article className="metric-card"><p className="metric-label">Chat Messages</p><div className="metric-value">{metrics.chat_messages || 0}</div></article>
             <article className="metric-card"><p className="metric-label">Practice Submissions</p><div className="metric-value">{metrics.practice_submissions || 0}</div></article>
             <article className="metric-card"><p className="metric-label">Downloads</p><div className="metric-value">{metrics.downloads || 0}</div></article>
+            <article className="metric-card"><p className="metric-label">Feedback Total</p><div className="metric-value">{feedbackSummary.total || 0}</div></article>
           </div>
         </div>
+
+        {analytics && (
+          <div className="glass-card p-4 mb-4">
+            <h5 className="mb-3">Advanced Analytics</h5>
+            <div className="row g-3">
+              <div className="col-lg-4">
+                <h6 className="mb-2">Style Distribution</h6>
+                {Object.keys(styleDist).length === 0 ? (
+                  <p className="text-muted mb-0">No style data yet.</p>
+                ) : (
+                  Object.entries(styleDist).map(([k, v]) => (
+                    <div key={k} className="d-flex justify-content-between soft-card p-2 mb-1">
+                      <span>{k}</span>
+                      <strong>{v}</strong>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="col-lg-4">
+                <h6 className="mb-2">Daily Signups</h6>
+                {(analytics.daily_signups || []).map((d) => (
+                  <div key={`s-${d.date}`} className="d-flex align-items-center gap-2 mb-1">
+                    <small style={{ width: 80 }}>{d.date.slice(5)}</small>
+                    <div className="progress flex-grow-1" style={{ height: 9 }}>
+                      <div className="progress-bar bg-info" style={{ width: `${Math.min(100, d.count * 20)}%` }}></div>
+                    </div>
+                    <small>{d.count}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="col-lg-4">
+                <h6 className="mb-2">Feedback Summary</h6>
+                <div className="soft-card p-2 mb-1 d-flex justify-content-between"><span>Helpful</span><strong>{feedbackSummary.helpful || 0}</strong></div>
+                <div className="soft-card p-2 mb-1 d-flex justify-content-between"><span>Needs Work</span><strong>{feedbackSummary.needs_work || 0}</strong></div>
+                <div className="soft-card p-2 mb-1 d-flex justify-content-between"><span>Avg Score</span><strong>{feedbackSummary.avg_rating ?? 0}</strong></div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="glass-card p-4 mb-4">
           <form className="d-flex gap-2 mb-3" onSubmit={onSearch}>

@@ -126,6 +126,9 @@ docker compose -f docker-compose.prod.yml down
   - `DELETE /api/chat/history`
   - `DELETE /api/chat/history/<chat_id>`
   - `GET /api/chat/suggestions?topic=<topic>`
+  - `POST /api/chat/feedback`
+- Dashboard:
+  - `GET /api/dashboard/insights`
 - Practice:
   - `GET /api/practice/topics`
   - `GET /api/practice/tasks?topic=<topic>`
@@ -143,5 +146,6 @@ docker compose -f docker-compose.prod.yml down
   - `GET /api/downloads/file/<download_id>`
 - Admin:
   - `GET /api/admin/summary`
+  - `GET /api/admin/analytics`
   - `GET /api/admin/users?q=<name_or_email>`
   - `DELETE /api/admin/users/<user_id>`

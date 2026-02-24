@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [downloads, setDownloads] = useState([]);
   const [chatHistory, setChatHistory] = useState([]);
   const [practiceRows, setPracticeRows] = useState([]);
+  const [insights, setInsights] = useState(null);
   const [downloadError, setDownloadError] = useState("");
 
   useEffect(() => {
@@ -26,10 +27,12 @@ export default function DashboardPage() {
       api.get("/downloads/mine"),
       api.get("/chat/history"),
       api.get("/practice/mine"),
-    ]).then(([d, c, p]) => {
+      api.get("/dashboard/insights"),
+    ]).then(([d, c, p, i]) => {
       if (d.status === "fulfilled") setDownloads(d.value.data || []);
       if (c.status === "fulfilled") setChatHistory(c.value.data || []);
       if (p.status === "fulfilled") setPracticeRows(p.value.data || []);
+      if (i.status === "fulfilled") setInsights(i.value.data || null);
     });
   }, [navigate]);
 
@@ -44,6 +47,9 @@ export default function DashboardPage() {
     styleData?.learning_style === "kinesthetic"
       ? "Open practice lab and complete one guided task."
       : "Ask chatbot for one concept and download the personalized resource.";
+  const recommendedTopic = insights?.recommended_topic || "Object-oriented programming fundamentals";
+  const masteryScore = insights?.mastery_score ?? 0;
+  const streakDays = insights?.streak_days ?? 0;
 
   const recommendationCards = [
     {
@@ -145,6 +151,16 @@ export default function DashboardPage() {
               <div className="metric-value">{totalPracticeTime}s</div>
               <p className="metric-foot">Tracked coding duration</p>
             </article>
+            <article className="metric-card">
+              <p className="metric-label">Mastery Score</p>
+              <div className="metric-value">{masteryScore}</div>
+              <p className="metric-foot">Calculated from learning activity</p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">Learning Streak</p>
+              <div className="metric-value">{streakDays}d</div>
+              <p className="metric-foot">Consecutive active days</p>
+            </article>
           </div>
         </div>
 
@@ -154,6 +170,7 @@ export default function DashboardPage() {
               <h5 className="mb-2">Latest Learning Context</h5>
               <p className="mb-2 text-muted"><strong>Last asked:</strong> {latestQuestion}</p>
               <p className="mb-0"><strong>Recommended next step:</strong> {recommendedAction}</p>
+              <p className="mb-0 mt-2"><strong>AI Suggested Topic:</strong> {recommendedTopic}</p>
             </div>
           </div>
           <div className="col-lg-6">
@@ -167,6 +184,50 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {insights && (
+          <div className="glass-card p-4 mb-4">
+            <h5 className="mb-3">Activity Trends (Last 7 Days)</h5>
+            <div className="row g-3">
+              <div className="col-lg-4">
+                <h6 className="mb-2">Chat Activity</h6>
+                {(insights.daily_chat || []).map((d) => (
+                  <div key={`c-${d.date}`} className="d-flex align-items-center gap-2 mb-1">
+                    <small style={{ width: 80 }}>{d.date.slice(5)}</small>
+                    <div className="progress flex-grow-1" style={{ height: 9 }}>
+                      <div className="progress-bar" style={{ width: `${Math.min(100, d.count * 20)}%` }}></div>
+                    </div>
+                    <small>{d.count}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="col-lg-4">
+                <h6 className="mb-2">Practice Activity</h6>
+                {(insights.daily_practice || []).map((d) => (
+                  <div key={`p-${d.date}`} className="d-flex align-items-center gap-2 mb-1">
+                    <small style={{ width: 80 }}>{d.date.slice(5)}</small>
+                    <div className="progress flex-grow-1" style={{ height: 9 }}>
+                      <div className="progress-bar bg-warning" style={{ width: `${Math.min(100, d.count * 20)}%` }}></div>
+                    </div>
+                    <small>{d.count}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="col-lg-4">
+                <h6 className="mb-2">Download Activity</h6>
+                {(insights.daily_downloads || []).map((d) => (
+                  <div key={`d-${d.date}`} className="d-flex align-items-center gap-2 mb-1">
+                    <small style={{ width: 80 }}>{d.date.slice(5)}</small>
+                    <div className="progress flex-grow-1" style={{ height: 9 }}>
+                      <div className="progress-bar bg-success" style={{ width: `${Math.min(100, d.count * 20)}%` }}></div>
+                    </div>
+                    <small>{d.count}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="glass-card p-4 mb-4">
           <h5 className="mb-3">Personalized Learning Recommendations</h5>

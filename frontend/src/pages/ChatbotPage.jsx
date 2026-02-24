@@ -30,6 +30,8 @@ export default function ChatbotPage() {
   const [autoPack, setAutoPack] = useState([]);
   const [audioSrc, setAudioSrc] = useState("");
   const [quickPrompts, setQuickPrompts] = useState(QUICK_PROMPTS);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackMsg, setFeedbackMsg] = useState("");
 
   const loadPrompts = async (topic = "") => {
     try {
@@ -99,6 +101,8 @@ export default function ChatbotPage() {
     try {
       const res = await api.post("/chat/", { question: asked });
       setResponse({ ...res.data, askedQuestion: asked });
+      setFeedbackComment("");
+      setFeedbackMsg("");
       await loadPrompts(asked);
       setAutoPack(res.data.auto_resources || []);
       if (audioSrc) {
@@ -188,6 +192,23 @@ export default function ChatbotPage() {
     if (!cleanTopic) return;
     const taskQuery = taskName ? `&task=${encodeURIComponent(taskName)}` : "";
     navigate(`/practice?topic=${encodeURIComponent(cleanTopic)}${taskQuery}`);
+  };
+
+  const submitFeedback = async (rating) => {
+    if (!response?.chat_id) return;
+    setFeedbackMsg("");
+    try {
+      await api.post("/chat/feedback", {
+        chat_id: response.chat_id,
+        rating,
+        comment: feedbackComment.trim(),
+      });
+      setFeedbackMsg(rating === 1 ? "Marked as helpful." : "Marked as needs improvement.");
+      const latest = await api.get("/chat/history");
+      setHistory(latest.data || []);
+    } catch (err) {
+      setFeedbackMsg(err.response?.data?.error || "Failed to save feedback.");
+    }
   };
 
   return (
@@ -321,6 +342,24 @@ export default function ChatbotPage() {
                 </div>
               )}
               {response.assets.starter_code && <pre className="chat-text">{response.assets.starter_code}</pre>}
+
+              {response.chat_id && (
+                <div className="mt-3">
+                  <p className="mb-1"><strong>Response Quality Feedback</strong></p>
+                  <div className="d-flex flex-wrap gap-2 mb-2">
+                    <button className="btn btn-sm surface-btn" onClick={() => submitFeedback(1)}>Helpful</button>
+                    <button className="btn btn-sm surface-btn" onClick={() => submitFeedback(-1)}>Needs Improvement</button>
+                  </div>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder="Optional comment to improve future responses..."
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                  />
+                  {feedbackMsg && <small className="text-muted d-block mt-1">{feedbackMsg}</small>}
+                </div>
+              )}
             </div>
           )}
 

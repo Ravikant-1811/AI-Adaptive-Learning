@@ -38,6 +38,18 @@ class ChatHistory(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
+class ChatFeedback(db.Model):
+    __tablename__ = "chat_feedback"
+
+    feedback_id = db.Column(db.Integer, primary_key=True)
+    chat_id = db.Column(db.Integer, db.ForeignKey("chat_history.chat_id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.user_id"), nullable=False, index=True)
+    rating = db.Column(db.Integer, nullable=False)  # 1 helpful, -1 needs work
+    comment = db.Column(db.String(600), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
 class PracticeActivity(db.Model):
     __tablename__ = "practice_activity"
 

@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
 
 from app.extensions import db
-from app.models import User, LearningStyle, ChatHistory, PracticeActivity, Download
+from app.models import User, LearningStyle, ChatHistory, PracticeActivity, Download, ChatFeedback
 from app.services.admin_auth import is_admin_email
 from app.services.user_cleanup import delete_user_with_related_data
 
@@ -126,3 +128,61 @@ def delete_user(user_id: int):
 
     delete_user_with_related_data(user_id)
     return jsonify({"message": "user deleted", "user_id": user_id})
+
+
+@admin_bp.get("/analytics")
+@jwt_required()
+def analytics():
+    _, err = _require_admin()
+    if err:
+        return err
+
+    # style distribution
+    style_rows = (
+        db.session.query(LearningStyle.learning_style, func.count(LearningStyle.user_id))
+        .group_by(LearningStyle.learning_style)
+        .all()
+    )
+    style_dist = {row[0]: row[1] for row in style_rows}
+
+    # last 7-day trends
+    today = datetime.utcnow().date()
+    labels = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
+    signup_map = {k: 0 for k in labels}
+    chat_map = {k: 0 for k in labels}
+    feedback_map = {k: 0 for k in labels}
+
+    for row in User.query.filter(User.created_at >= datetime.utcnow() - timedelta(days=7)).all():
+        key = row.created_at.strftime("%Y-%m-%d")
+        if key in signup_map:
+            signup_map[key] += 1
+    for row in ChatHistory.query.filter(ChatHistory.timestamp >= datetime.utcnow() - timedelta(days=7)).all():
+        key = row.timestamp.strftime("%Y-%m-%d")
+        if key in chat_map:
+            chat_map[key] += 1
+    for row in ChatFeedback.query.filter(ChatFeedback.created_at >= datetime.utcnow() - timedelta(days=7)).all():
+        key = row.created_at.strftime("%Y-%m-%d")
+        if key in feedback_map:
+            feedback_map[key] += 1
+
+    feedback_total = db.session.query(func.count(ChatFeedback.feedback_id)).scalar() or 0
+    helpful = db.session.query(func.count(ChatFeedback.feedback_id)).filter(ChatFeedback.rating == 1).scalar() or 0
+    needs_work = db.session.query(func.count(ChatFeedback.feedback_id)).filter(ChatFeedback.rating == -1).scalar() or 0
+    avg_rating = 0
+    if feedback_total:
+        avg_rating = round(((helpful - needs_work) / feedback_total), 2)
+
+    return jsonify(
+        {
+            "style_distribution": style_dist,
+            "daily_signups": [{"date": d, "count": signup_map[d]} for d in labels],
+            "daily_chats": [{"date": d, "count": chat_map[d]} for d in labels],
+            "daily_feedback": [{"date": d, "count": feedback_map[d]} for d in labels],
+            "feedback_summary": {
+                "total": feedback_total,
+                "helpful": helpful,
+                "needs_work": needs_work,
+                "avg_rating": avg_rating,
+            },
+        }
+    )

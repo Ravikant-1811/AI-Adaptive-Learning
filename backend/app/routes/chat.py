@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
-from app.models import LearningStyle, ChatHistory, Download
+from app.models import LearningStyle, ChatHistory, Download, ChatFeedback
 from app.services.chatbot_service import generate_adaptive_response, get_quick_prompts
 from app.services.download_service import create_download_file
 from app.services.practice_task_service import generate_practice_tasks_from_topic
@@ -74,6 +74,7 @@ def ask_chatbot():
         return jsonify({"error": "temporary database issue. please retry"}), 503
 
     result["auto_resources"] = auto_resources
+    result["chat_id"] = history.chat_id
     result["practice"] = {
         "topic": question,
         "source": practice_source,
@@ -92,6 +93,14 @@ def chat_history():
         .limit(30)
         .all()
     )
+    feedback_rows = []
+    if rows:
+        feedback_rows = ChatFeedback.query.filter(
+            ChatFeedback.user_id == user_id,
+            ChatFeedback.chat_id.in_([r.chat_id for r in rows]),
+        ).all()
+    feedback_map = {f.chat_id: {"rating": f.rating, "comment": f.comment} for f in feedback_rows}
+
     return jsonify(
         [
             {
@@ -101,6 +110,7 @@ def chat_history():
                 "response_type": r.response_type,
                 "learning_style_used": r.learning_style_used,
                 "timestamp": r.timestamp.isoformat(),
+                "feedback": feedback_map.get(r.chat_id),
             }
             for r in rows
         ]
@@ -125,6 +135,7 @@ def delete_chat_item(chat_id: int):
     row = ChatHistory.query.filter_by(chat_id=chat_id, user_id=user_id).first()
     if not row:
         return jsonify({"error": "chat not found"}), 404
+    ChatFeedback.query.filter_by(chat_id=chat_id, user_id=user_id).delete()
     db.session.delete(row)
     db.session.commit()
     return jsonify({"message": "chat deleted", "chat_id": chat_id})
@@ -135,9 +146,48 @@ def delete_chat_item(chat_id: int):
 def clear_history():
     user_id = int(get_jwt_identity())
     try:
+        chat_ids = [r.chat_id for r in ChatHistory.query.filter_by(user_id=user_id).all()]
+        if chat_ids:
+            ChatFeedback.query.filter(
+                ChatFeedback.user_id == user_id,
+                ChatFeedback.chat_id.in_(chat_ids),
+            ).delete(synchronize_session=False)
         ChatHistory.query.filter_by(user_id=user_id).delete()
         db.session.commit()
         return jsonify({"message": "chat history cleared"})
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify({"error": "failed to clear chat history"}), 500
+
+
+@chat_bp.post("/feedback")
+@jwt_required()
+def chat_feedback():
+    user_id = int(get_jwt_identity())
+    payload = request.get_json() or {}
+    try:
+        chat_id = int(payload.get("chat_id"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "chat_id is required"}), 400
+
+    try:
+        rating = int(payload.get("rating"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "rating must be 1 or -1"}), 400
+    if rating not in {1, -1}:
+        return jsonify({"error": "rating must be 1 or -1"}), 400
+
+    comment = str(payload.get("comment", "")).strip()[:600]
+    chat_row = ChatHistory.query.filter_by(chat_id=chat_id, user_id=user_id).first()
+    if not chat_row:
+        return jsonify({"error": "chat not found"}), 404
+
+    row = ChatFeedback.query.filter_by(chat_id=chat_id, user_id=user_id).first()
+    if not row:
+        row = ChatFeedback(chat_id=chat_id, user_id=user_id, rating=rating, comment=comment or None)
+        db.session.add(row)
+    else:
+        row.rating = rating
+        row.comment = comment or None
+    db.session.commit()
+    return jsonify({"message": "feedback saved", "chat_id": chat_id, "rating": rating})
