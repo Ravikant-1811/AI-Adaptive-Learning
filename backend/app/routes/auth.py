@@ -3,8 +3,9 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.extensions import db
-from app.models import User, PasswordResetToken, LearningStyle, ChatHistory, PracticeActivity, Download
+from app.models import User, PasswordResetToken
 from app.services.admin_auth import is_admin_email
+from app.services.user_cleanup import delete_user_with_related_data
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -181,17 +182,9 @@ def logout():
 @jwt_required()
 def delete_me():
     user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
-    if not user:
+    deleted = delete_user_with_related_data(user_id)
+    if not deleted:
         return jsonify({"error": "user not found"}), 404
-
-    ChatHistory.query.filter_by(user_id=user_id).delete()
-    PracticeActivity.query.filter_by(user_id=user_id).delete()
-    Download.query.filter_by(user_id=user_id).delete()
-    LearningStyle.query.filter_by(user_id=user_id).delete()
-    PasswordResetToken.query.filter_by(user_id=user_id).delete()
-    db.session.delete(user)
-    db.session.commit()
     return jsonify({"message": "account deleted"})
 
 

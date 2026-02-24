@@ -3,8 +3,9 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
 
 from app.extensions import db
-from app.models import User, LearningStyle, ChatHistory, PracticeActivity, Download, PasswordResetToken
+from app.models import User, LearningStyle, ChatHistory, PracticeActivity, Download
 from app.services.admin_auth import is_admin_email
+from app.services.user_cleanup import delete_user_with_related_data
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
@@ -123,11 +124,5 @@ def delete_user(user_id: int):
     if not target:
         return jsonify({"error": "user not found"}), 404
 
-    ChatHistory.query.filter_by(user_id=user_id).delete()
-    PracticeActivity.query.filter_by(user_id=user_id).delete()
-    Download.query.filter_by(user_id=user_id).delete()
-    LearningStyle.query.filter_by(user_id=user_id).delete()
-    PasswordResetToken.query.filter_by(user_id=user_id).delete()
-    db.session.delete(target)
-    db.session.commit()
+    delete_user_with_related_data(user_id)
     return jsonify({"message": "user deleted", "user_id": user_id})

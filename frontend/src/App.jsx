@@ -25,7 +25,7 @@ export default function App() {
         <Route
           path="/style"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly>
               <LearningStylePage />
             </ProtectedRoute>
           }
@@ -33,7 +33,7 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly>
               <DashboardPage />
             </ProtectedRoute>
           }
@@ -41,7 +41,7 @@ export default function App() {
         <Route
           path="/chat"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly>
               <ChatbotPage />
             </ProtectedRoute>
           }
@@ -49,7 +49,7 @@ export default function App() {
         <Route
           path="/practice"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly>
               <PracticePage />
             </ProtectedRoute>
           }
