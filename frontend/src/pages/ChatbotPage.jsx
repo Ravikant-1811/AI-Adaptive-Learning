@@ -325,6 +325,11 @@ export default function ChatbotPage() {
             <div className="asset-panel mb-3">
               <h6 className="mb-2">Learning-Style Assets</h6>
               {response.assets.diagram && <p className="mb-2"><strong>Flow:</strong> {response.assets.diagram}</p>}
+              {response.assets.ai_image_url && (
+                <a href={response.assets.ai_image_url} target="_blank" rel="noreferrer">
+                  <img src={response.assets.ai_image_url} alt="ai generated learning visual" className="asset-image asset-image-hero mb-2" />
+                </a>
+              )}
               {(response.assets.graph_image_url || response.assets.bar_graph_image_url || response.assets.flowchart_image_url || response.assets.topic_image_url || response.assets.gif_url) && (
                 <div className="visual-gallery mb-2">
                   {response.assets.topic_image_url && (

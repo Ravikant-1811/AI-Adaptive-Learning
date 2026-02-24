@@ -1,8 +1,9 @@
 import random
 import re
 from urllib.parse import quote_plus
+import os
 
-from app.services.openai_service import chatgpt_json, chatgpt_text
+from app.services.openai_service import chatgpt_json, chatgpt_text, generate_image_data_url
 from urllib.parse import quote
 
 
@@ -170,6 +171,25 @@ def _youtube_search_url(topic: str) -> str:
     return f"https://www.youtube.com/results?search_query={quote_plus(query)}"
 
 
+def _generate_ai_visual_image(question: str, blueprint: dict) -> str | None:
+    enabled = os.getenv("OPENAI_VISUAL_IMAGE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return None
+    concept_line = ", ".join(blueprint.get("concept_nodes", [])[:4])
+    flow_line = " -> ".join(blueprint.get("flow_steps", [])[:5])
+    prompt = (
+        "Create a clean educational infographic image for a programming learner. "
+        "Use modern flat design, high contrast labels, readable typography, and minimal clutter. "
+        "Do not include logos, watermarks, or dense paragraphs.\n\n"
+        f"Topic: {question}\n"
+        f"Title: {blueprint.get('title', '')}\n"
+        f"Key concepts: {concept_line}\n"
+        f"Learning flow: {flow_line}\n"
+        "Visual layout: top title, middle concept map, bottom short takeaway strip."
+    )
+    return generate_image_data_url(prompt, size="1024x1024")
+
+
 def _generate_prompt_suggestions(topic: str, style: str) -> list[str]:
     base_topic = topic.strip() or "Java exception handling"
     system_prompt = (
@@ -335,11 +355,13 @@ def generate_adaptive_response(question: str, style: str) -> dict:
 
     if style == "visual":
         blueprint = _generate_visual_blueprint(question, text)
+        ai_visual_image_url = _generate_ai_visual_image(question, blueprint)
         return {
             "response_type": "visual",
             "ai_used": ai_used,
             "text": text,
             "assets": {
+                "ai_image_url": ai_visual_image_url,
                 "diagram": " -> ".join(blueprint["flow_steps"]),
                 "graph_image_url": _visual_chart_url(blueprint),
                 "bar_graph_image_url": _visual_bar_chart_url(blueprint),
