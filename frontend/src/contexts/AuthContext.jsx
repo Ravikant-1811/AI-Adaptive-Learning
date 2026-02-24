@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
 
     api
       .get("/auth/me")
-      .then((res) => setUser(res.data))
+      .then((res) => setUser({ ...res.data, is_admin: !!res.data?.is_admin }))
       .catch(() => {
         localStorage.removeItem("token");
         setUser(null);
@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
     localStorage.setItem("token", res.data.access_token);
-    setUser(res.data.user);
+    setUser({ ...res.data.user, is_admin: !!res.data.user?.is_admin });
   };
 
   const register = async (name, email, password) => {

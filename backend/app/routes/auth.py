@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models import User, PasswordResetToken, LearningStyle, ChatHistory, PracticeActivity, Download
+from app.services.admin_auth import is_admin_email
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -49,6 +50,7 @@ def login():
                 "user_id": user.user_id,
                 "name": user.name,
                 "email": user.email,
+                "is_admin": is_admin_email(user.email),
             },
         }
     )
@@ -62,7 +64,14 @@ def me():
     if not user:
         return jsonify({"error": "user not found"}), 404
 
-    return jsonify({"user_id": user.user_id, "name": user.name, "email": user.email})
+    return jsonify(
+        {
+            "user_id": user.user_id,
+            "name": user.name,
+            "email": user.email,
+            "is_admin": is_admin_email(user.email),
+        }
+    )
 
 
 @auth_bp.put("/me")
@@ -96,7 +105,17 @@ def update_me():
         user.password_hash = generate_password_hash(password)
 
     db.session.commit()
-    return jsonify({"message": "profile updated", "user": {"user_id": user.user_id, "name": user.name, "email": user.email}})
+    return jsonify(
+        {
+            "message": "profile updated",
+            "user": {
+                "user_id": user.user_id,
+                "name": user.name,
+                "email": user.email,
+                "is_admin": is_admin_email(user.email),
+            },
+        }
+    )
 
 
 @auth_bp.post("/logout")

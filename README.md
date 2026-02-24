@@ -47,6 +47,7 @@ Edit `docker-compose.prod.yml` and change at minimum:
 - `SECRET_KEY`
 - `JWT_SECRET_KEY`
 - `POSTGRES_PASSWORD`
+- `ADMIN_EMAILS`
 
 Also export optional AI variables before run:
 ```bash
@@ -79,6 +80,7 @@ docker compose -f docker-compose.prod.yml down
 - API readiness endpoint (`/api/ready`) with DB check
 - SQLite lock mitigation for local mode (WAL + timeout)
 - Environment-based CORS and secret validation in production
+- Admin allowlist via `ADMIN_EMAILS` (comma-separated emails)
 
 ## TTS Audio Generation (Auditory Mode)
 - Auditory chat mode auto-generates downloadable audio.
@@ -137,3 +139,7 @@ docker compose -f docker-compose.prod.yml down
   - `GET /api/downloads/mine/<download_id>`
   - `DELETE /api/downloads/mine/<download_id>`
   - `GET /api/downloads/file/<download_id>`
+- Admin:
+  - `GET /api/admin/summary`
+  - `GET /api/admin/users?q=<name_or_email>`
+  - `DELETE /api/admin/users/<user_id>`

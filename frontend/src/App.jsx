@@ -8,6 +8,7 @@ import DashboardPage from "./pages/DashboardPage";
 import LearningStylePage from "./pages/LearningStylePage";
 import ChatbotPage from "./pages/ChatbotPage";
 import PracticePage from "./pages/PracticePage";
+import AdminPage from "./pages/AdminPage";
 
 export default function App() {
   return (
@@ -47,6 +48,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <PracticePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminPage />
             </ProtectedRoute>
           }
         />
