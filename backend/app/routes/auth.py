@@ -43,6 +43,33 @@ def login():
         return jsonify({"error": "invalid credentials"}), 401
 
     token = create_access_token(identity=str(user.user_id))
+    user_payload = {
+        "user_id": user.user_id,
+        "name": user.name,
+        "email": user.email,
+        "is_admin": is_admin_email(user.email),
+    }
+    return jsonify(
+        {
+            "access_token": token,
+            "user": user_payload,
+        }
+    )
+
+
+@auth_bp.post("/login-user")
+def login_user():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"error": "invalid credentials"}), 401
+    if is_admin_email(user.email):
+        return jsonify({"error": "use admin login for this account"}), 403
+
+    token = create_access_token(identity=str(user.user_id))
     return jsonify(
         {
             "access_token": token,
@@ -50,7 +77,33 @@ def login():
                 "user_id": user.user_id,
                 "name": user.name,
                 "email": user.email,
-                "is_admin": is_admin_email(user.email),
+                "is_admin": False,
+            },
+        }
+    )
+
+
+@auth_bp.post("/login-admin")
+def login_admin():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"error": "invalid credentials"}), 401
+    if not is_admin_email(user.email):
+        return jsonify({"error": "admin access required"}), 403
+
+    token = create_access_token(identity=str(user.user_id))
+    return jsonify(
+        {
+            "access_token": token,
+            "user": {
+                "user_id": user.user_id,
+                "name": user.name,
+                "email": user.email,
+                "is_admin": True,
             },
         }
     )

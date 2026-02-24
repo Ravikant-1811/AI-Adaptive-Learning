@@ -7,7 +7,7 @@ export default function NavBar() {
 
   const onLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/user-login");
   };
 
   return (

@@ -105,6 +105,8 @@ docker compose -f docker-compose.prod.yml down
 - Auth:
   - `POST /api/auth/register`
   - `POST /api/auth/login`
+  - `POST /api/auth/login-user`
+  - `POST /api/auth/login-admin`
   - `POST /api/auth/logout`
   - `GET /api/auth/me`
   - `PUT /api/auth/me`

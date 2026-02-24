@@ -13,7 +13,7 @@ export default function RegisterPage() {
     setError("");
     try {
       await register(form.name, form.email, form.password);
-      navigate("/login");
+      navigate("/user-login");
     } catch (err) {
       setError(err.response?.data?.error || "Registration failed");
     }
@@ -45,7 +45,7 @@ export default function RegisterPage() {
             <input type="password" className="form-control" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             <button className="btn brand-btn">Create account</button>
           </form>
-          <p className="mt-3 mb-0">Already have an account? <Link to="/login">Login</Link></p>
+          <p className="mt-3 mb-0">Already have an account? <Link to="/user-login">User Login</Link></p>
         </section>
       </div>
     </div>

@@ -24,8 +24,10 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email, password) => {
-    const res = await api.post("/auth/login", { email, password });
+  const login = async (email, password, mode = "user") => {
+    const endpoint =
+      mode === "admin" ? "/auth/login-admin" : mode === "any" ? "/auth/login" : "/auth/login-user";
+    const res = await api.post(endpoint, { email, password });
     localStorage.setItem("token", res.data.access_token);
     setUser({ ...res.data.user, is_admin: !!res.data.user?.is_admin });
   };

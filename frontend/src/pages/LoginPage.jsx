@@ -14,7 +14,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     try {
-      await login(email, password);
+      await login(email, password, "user");
       const style = await api.get("/style/mine");
       navigate(style.data.learning_style ? "/dashboard" : "/style");
     } catch (err) {
@@ -39,15 +39,16 @@ export default function LoginPage() {
         </section>
 
         <section className="glass-card auth-form">
-          <h3 className="mb-1">Welcome Back</h3>
-          <p className="text-muted mb-3">Login to continue your personalized learning journey.</p>
+          <h3 className="mb-1">User Login</h3>
+          <p className="text-muted mb-3">Login as learner to continue your personalized journey.</p>
           {error && <div className="alert alert-danger py-2">{error}</div>}
           <form onSubmit={submit} className="d-grid gap-3">
             <input className="form-control" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
             <input type="password" className="form-control" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button className="btn brand-btn">Login</button>
+            <button className="btn brand-btn">Login as User</button>
           </form>
           <p className="mt-3 mb-1">No account? <Link to="/register">Create one</Link></p>
+          <p className="mb-1"><Link to="/admin-login">Admin Login</Link></p>
           <p className="mb-0"><Link to="/reset-password">Forgot password?</Link></p>
         </section>
       </div>

@@ -19,10 +19,11 @@ export default function LandingPage() {
 
         <section className="glass-card auth-form">
           <h3 className="mb-2">Start Learning Smarter</h3>
-          <p className="text-muted mb-3">Choose an option to continue.</p>
+          <p className="text-muted mb-3">Choose separate login by role.</p>
           <div className="d-grid gap-2">
             <Link to="/register" className="btn brand-btn">Create Account</Link>
-            <Link to="/login" className="btn surface-btn">Login</Link>
+            <Link to="/user-login" className="btn surface-btn">User Login</Link>
+            <Link to="/admin-login" className="btn surface-btn">Admin Login</Link>
           </div>
         </section>
       </div>
