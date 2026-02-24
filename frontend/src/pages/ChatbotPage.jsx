@@ -9,6 +9,7 @@ const QUICK_PROMPTS = [
   "Give me one practical coding task",
   "What are common mistakes in Java?",
 ];
+const CHAT_LATEST_RESPONSE_KEY = "chatLatestRichResponse";
 
 function formatStyle(style) {
   if (!style) return "Unknown";
@@ -49,9 +50,28 @@ export default function ChatbotPage() {
     try {
       const [styleRes, historyRes] = await Promise.all([api.get("/style/mine"), api.get("/chat/history")]);
       setStyle(styleRes.data.learning_style || null);
-      setHistory(historyRes.data || []);
-      const latestTopic = historyRes.data?.[0]?.question || "";
+      const rows = historyRes.data || [];
+      setHistory(rows);
+      const latestTopic = rows?.[0]?.question || "";
       await loadPrompts(latestTopic);
+
+      const cachedRaw = localStorage.getItem(CHAT_LATEST_RESPONSE_KEY);
+      if (cachedRaw) {
+        try {
+          const cached = JSON.parse(cachedRaw);
+          const stillExists = rows.some((r) => r.chat_id === cached?.chat_id);
+          if (stillExists) {
+            setResponse(cached);
+            setAutoPack(cached.auto_resources || []);
+          } else {
+            localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
+            setResponse(null);
+            setAutoPack([]);
+          }
+        } catch {
+          localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
+        }
+      }
     } catch {
       setError("Failed to load chat. Please refresh.");
     } finally {
@@ -100,11 +120,13 @@ export default function ChatbotPage() {
     setError("");
     try {
       const res = await api.post("/chat/", { question: asked });
-      setResponse({ ...res.data, askedQuestion: asked });
+      const richResponse = { ...res.data, askedQuestion: asked };
+      setResponse(richResponse);
       setFeedbackComment("");
       setFeedbackMsg("");
       await loadPrompts(asked);
       setAutoPack(res.data.auto_resources || []);
+      localStorage.setItem(CHAT_LATEST_RESPONSE_KEY, JSON.stringify(richResponse));
       if (audioSrc) {
         window.URL.revokeObjectURL(audioSrc);
         setAudioSrc("");
@@ -164,6 +186,7 @@ export default function ChatbotPage() {
       setHistory([]);
       setResponse(null);
       setAutoPack([]);
+      localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
       localStorage.removeItem("linkedPracticeBundle");
     } catch {
       setError("Failed to clear chat history.");
