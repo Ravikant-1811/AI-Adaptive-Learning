@@ -29,6 +29,13 @@ export default function PracticePage() {
   const [selectedTopic, setSelectedTopic] = useState("");
   const [usingLinkedBundle, setUsingLinkedBundle] = useState(false);
 
+  const normalizeTopic = (value) =>
+    (value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
   const mapChatTaskToPracticeTask = (task) => ({
     task_name: task.task_name,
     description: task.description || "Task assigned from chat.",
@@ -43,9 +50,10 @@ export default function PracticePage() {
     try {
       const parsed = JSON.parse(raw);
       if (!parsed?.topic || !Array.isArray(parsed?.tasks) || parsed.tasks.length === 0) return false;
-      if ((parsed.topic || "").trim().toLowerCase() !== (topic || "").trim().toLowerCase()) return false;
+      if (topic && normalizeTopic(parsed.topic) !== normalizeTopic(topic)) return false;
 
       const taskList = parsed.tasks.map(mapChatTaskToPracticeTask);
+      if (taskList.length === 0) return false;
       setTasks(taskList);
       setTaskSource("chat-assigned");
       setTaskTopic(parsed.topic);
@@ -59,15 +67,23 @@ export default function PracticePage() {
       setCode(selected?.starter_code || "");
       return true;
     } catch {
+      localStorage.removeItem("linkedPracticeBundle");
       return false;
     }
   };
 
-  const loadTasksByTopic = async (topic, preferredTaskName = "") => {
+  const loadTasksByTopic = async (topic, preferredTaskName = "", forceApi = false) => {
     if (topic && loadFromLinkedBundle(topic, preferredTaskName)) return;
+    if (!topic && !forceApi && loadFromLinkedBundle("", preferredTaskName)) return;
 
     const query = topic ? `?topic=${encodeURIComponent(topic)}` : "";
-    const taskRes = await api.get(`/practice/tasks${query}`);
+    let taskRes;
+    try {
+      taskRes = await api.get(`/practice/tasks${query}`);
+    } catch (err) {
+      if (!forceApi && loadFromLinkedBundle("", preferredTaskName)) return;
+      throw err;
+    }
     const taskList = taskRes.data.tasks || [];
 
     setUsingLinkedBundle(false);
@@ -88,24 +104,40 @@ export default function PracticePage() {
     setPageLoading(true);
     setPageError("");
     try {
-      const [topicRes, activityRes] = await Promise.all([api.get("/practice/topics"), api.get("/practice/mine")]);
-      const catalog = [...(topicRes.data.topics || [])];
+      const [topicRes, activityRes] = await Promise.allSettled([api.get("/practice/topics"), api.get("/practice/mine")]);
+      const catalog = [...(topicRes.status === "fulfilled" ? topicRes.value.data.topics || [] : [])];
 
       if (linkedTopicParam && !catalog.some((t) => t.topic === linkedTopicParam)) {
         catalog.unshift({ topic: linkedTopicParam, tasks: [] });
       }
       setTopicCatalog(catalog);
 
-      if (linkedTopicParam) {
-        setSelectedTopic(linkedTopicParam);
-        await loadTasksByTopic(linkedTopicParam, linkedTaskParam);
-      } else {
-        const defaultTopic = catalog[0]?.topic || "";
-        setSelectedTopic(defaultTopic);
-        await loadTasksByTopic(defaultTopic, linkedTaskParam);
+      const bundleRaw = localStorage.getItem("linkedPracticeBundle");
+      let bundleTopic = "";
+      if (bundleRaw) {
+        try {
+          const parsed = JSON.parse(bundleRaw);
+          bundleTopic = parsed?.topic || "";
+        } catch {
+          bundleTopic = "";
+        }
       }
 
-      setActivities(activityRes.data || []);
+      const targetTopic = linkedTopicParam || bundleTopic || catalog[0]?.topic || "";
+      if (targetTopic) {
+        setSelectedTopic(targetTopic);
+        await loadTasksByTopic(targetTopic, linkedTaskParam);
+      } else {
+        await loadTasksByTopic("", linkedTaskParam);
+      }
+
+      if (activityRes.status === "fulfilled") {
+        setActivities(activityRes.value.data || []);
+      } else {
+        setActivities([]);
+      }
+
+      if (topicRes.status === "rejected") setPageError("Topics list unavailable, but task runner is ready.");
     } catch (err) {
       setPageError(err.response?.data?.error || "Failed to load practice lab.");
     } finally {
