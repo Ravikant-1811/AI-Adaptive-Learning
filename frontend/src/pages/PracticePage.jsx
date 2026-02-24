@@ -73,7 +73,7 @@ export default function PracticePage() {
   };
 
   const loadTasksByTopic = async (topic, preferredTaskName = "", forceApi = false) => {
-    if (topic && loadFromLinkedBundle(topic, preferredTaskName)) return;
+    if (!forceApi && topic && loadFromLinkedBundle(topic, preferredTaskName)) return;
     if (!topic && !forceApi && loadFromLinkedBundle("", preferredTaskName)) return;
 
     const query = topic ? `?topic=${encodeURIComponent(topic)}` : "";
