@@ -50,8 +50,8 @@ def ask_chatbot():
         return jsonify({"error": "learning style not found"}), 400
 
     result = generate_adaptive_response(question, style_row.learning_style)
-    # Keep chat API fast by avoiding a second AI call in this request path.
-    practice_tasks, practice_source = generate_practice_tasks_from_topic(question, count=3, allow_ai=False)
+    # Generate topic-specific tasks; fallback logic inside service handles failures gracefully.
+    practice_tasks, practice_source = generate_practice_tasks_from_topic(question, count=3, allow_ai=True)
     try:
         auto_resources = _auto_generate_resources(
             user_id=user_id,

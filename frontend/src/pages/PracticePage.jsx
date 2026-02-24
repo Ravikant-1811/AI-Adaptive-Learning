@@ -355,7 +355,8 @@ export default function PracticePage() {
                 setPageLoading(true);
                 setPageError("");
                 try {
-                  await loadTasksByTopic(selectedTopic);
+                  await loadTasksByTopic(selectedTopic, "", true);
+                  setUsingLinkedBundle(false);
                 } catch (err) {
                   setPageError(err.response?.data?.error || "Failed to load selected topic tasks.");
                 } finally {
@@ -367,7 +368,24 @@ export default function PracticePage() {
             </button>
           </div>
 
-          <button className="btn btn-sm btn-outline-dark mb-3" onClick={loadPracticeData} disabled={pageLoading}>
+          <button
+            className="btn btn-sm btn-outline-dark mb-3"
+            onClick={async () => {
+              setPageLoading(true);
+              setPageError("");
+              try {
+                await loadTasksByTopic(selectedTopic || linkedTopicParam || taskTopic, "", true);
+                const res = await api.get("/practice/mine");
+                setActivities(res.data || []);
+                setUsingLinkedBundle(false);
+              } catch (err) {
+                setPageError(err.response?.data?.error || "Failed to refresh tasks.");
+              } finally {
+                setPageLoading(false);
+              }
+            }}
+            disabled={pageLoading}
+          >
             {pageLoading ? "Refreshing..." : "Refresh Tasks"}
           </button>
 
