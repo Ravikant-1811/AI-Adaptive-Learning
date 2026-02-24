@@ -3,6 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import api from "../services/api";
 
+const EXT_BY_TYPE = {
+  task_sheet: ".txt",
+  solution: ".txt",
+};
+
 export default function PracticePage() {
   const [searchParams] = useSearchParams();
   const linkedTopicParam = (searchParams.get("topic") || "").trim();
@@ -23,6 +28,7 @@ export default function PracticePage() {
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
   const [downloadError, setDownloadError] = useState("");
+  const [downloadSuccess, setDownloadSuccess] = useState("");
   const [taskSource, setTaskSource] = useState("default");
   const [taskTopic, setTaskTopic] = useState("");
   const [topicCatalog, setTopicCatalog] = useState([]);
@@ -35,6 +41,13 @@ export default function PracticePage() {
       .replace(/[^a-z0-9\s]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+
+  const safeFileName = (name) =>
+    String(name || "task")
+      .replace(/[^a-zA-Z0-9._-]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80) || "task";
 
   const mapChatTaskToPracticeTask = (task) => ({
     task_name: task.task_name,
@@ -231,6 +244,7 @@ export default function PracticePage() {
   const downloadPracticeAsset = async (contentType) => {
     if (!selectedTask) return;
     setDownloadError("");
+    setDownloadSuccess("");
     const content = [
       `Task: ${selectedTask.task_name}`,
       `Description: ${selectedTask.description || ""}`,
@@ -252,11 +266,14 @@ export default function PracticePage() {
       const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `${selectedTask.task_name.replace(/\s+/g, "_")}_${contentType}`;
+      const base = safeFileName(`${selectedTask.task_name}_${contentType}`);
+      const ext = EXT_BY_TYPE[contentType] || ".txt";
+      link.download = base.endsWith(ext) ? base : `${base}${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
+      setDownloadSuccess(`${contentType} downloaded successfully.`);
     } catch (err) {
       setDownloadError(err.response?.data?.error || "Failed to download file.");
     }
@@ -424,6 +441,7 @@ export default function PracticePage() {
           </div>
 
           {downloadError && <div className="alert alert-danger py-2 mt-2 mb-0">{downloadError}</div>}
+          {downloadSuccess && <div className="alert alert-success py-2 mt-2 mb-0">{downloadSuccess}</div>}
 
           {(runOutput.stdout || runOutput.stderr || runOutput.status || loading) && (
             <div className="mt-3 border rounded p-3 bg-light">

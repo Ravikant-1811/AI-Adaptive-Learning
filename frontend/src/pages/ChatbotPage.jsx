@@ -10,10 +10,25 @@ const QUICK_PROMPTS = [
   "What are common mistakes in Java?",
 ];
 const CHAT_LATEST_RESPONSE_KEY = "chatLatestRichResponse";
+const EXT_BY_TYPE = {
+  pdf: ".txt",
+  video: ".txt",
+  audio: ".mp3",
+  task_sheet: ".txt",
+  solution: ".txt",
+};
 
 function formatStyle(style) {
   if (!style) return "Unknown";
   return style.charAt(0).toUpperCase() + style.slice(1);
+}
+
+function safeFileName(name) {
+  return String(name || "resource")
+    .replace(/[^a-zA-Z0-9._-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80) || "resource";
 }
 
 export default function ChatbotPage() {
@@ -193,14 +208,16 @@ export default function ChatbotPage() {
     }
   };
 
-  const downloadById = async (downloadId, label) => {
+  const downloadById = async (downloadId, label, contentType = "") => {
     setDownloadError("");
     try {
       const fileResp = await api.get(`/downloads/file/${downloadId}`, { responseType: "blob" });
       const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = label || `resource_${downloadId}`;
+      const ext = EXT_BY_TYPE[contentType] || "";
+      const base = safeFileName(label || `resource_${downloadId}`);
+      link.download = base.endsWith(ext) ? base : `${base}${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -311,7 +328,7 @@ export default function ChatbotPage() {
                     <button
                       key={item.download_id}
                       className="btn btn-sm surface-btn"
-                      onClick={() => downloadById(item.download_id, `${item.content_type}_${item.download_id}`)}
+                      onClick={() => downloadById(item.download_id, `${item.content_type}_${item.download_id}`, item.content_type)}
                     >
                       Download {item.content_type}
                     </button>
