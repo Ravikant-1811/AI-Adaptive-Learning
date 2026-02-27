@@ -6,6 +6,7 @@ from app.models import LearningStyle, ChatHistory, Download, ChatFeedback
 from app.services.chatbot_service import generate_adaptive_response, get_quick_prompts
 from app.services.download_service import create_download_file
 from app.services.practice_task_service import generate_practice_tasks_from_topic
+from app.services.adaptive_content_service import generate_learning_asset
 
 
 chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
@@ -13,16 +14,47 @@ chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
 def _auto_generate_resources(user_id: int, style: str, topic: str, base_content: str) -> list[dict]:
     resources = []
-    # Keep chat response fast and stable by generating lightweight assets synchronously.
-    # Audio can still be generated explicitly from the Downloads module on demand.
+    # Generate per-type assets so task_sheet and solution are intentionally different.
     content_types = ["pdf", "task_sheet", "solution"]
     for ctype in content_types:
-        asset_text = (
-            f"Topic: {topic}\n"
-            f"Learning style: {style}\n"
-            f"Resource type: {ctype}\n\n"
-            f"{base_content[:3500]}"
+        generated = generate_learning_asset(
+            style=style,
+            content_type=ctype,
+            topic=topic,
+            base_content=base_content[:3500],
         )
+        if ctype == "task_sheet":
+            asset_text = (
+                f"Topic: {topic}\n"
+                f"Learning style: {style}\n"
+                "Resource type: task_sheet\n\n"
+                "Practice Task Sheet\n"
+                "- Objective\n"
+                "- Steps to implement\n"
+                "- Test cases to run\n"
+                "- Submission checklist\n\n"
+                f"{generated}"
+            )
+        elif ctype == "solution":
+            asset_text = (
+                f"Topic: {topic}\n"
+                f"Learning style: {style}\n"
+                "Resource type: solution\n\n"
+                "Worked Solution\n"
+                "- Final code\n"
+                "- Why this works\n"
+                "- Expected output\n"
+                "- Common mistakes avoided\n\n"
+                f"{generated}"
+            )
+        else:
+            asset_text = (
+                f"Topic: {topic}\n"
+                f"Learning style: {style}\n"
+                f"Resource type: {ctype}\n\n"
+                f"{generated}"
+            )
+
         file_path = create_download_file(user_id, ctype, asset_text)
         row = Download(user_id=user_id, content_type=ctype, file_path=file_path)
         db.session.add(row)
