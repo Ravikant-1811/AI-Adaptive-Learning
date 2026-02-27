@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models import Download, LearningStyle, ChatHistory
-from app.services.adaptive_content_service import generate_learning_asset
+from app.services.adaptive_content_service import generate_learning_asset, generate_openai_solution
 from app.services.download_service import create_download_file
 
 
@@ -89,9 +89,12 @@ def create_download():
 
     base_payload = base_content or str(content or "").strip()
 
-    if content_type in {"task_sheet", "solution"}:
-        generated = generate_learning_asset(style_row.learning_style, content_type, topic, base_payload)
-        content = _build_distinct_kinesthetic_asset(content_type, topic, generated)
+    if content_type == "solution":
+        generated = generate_openai_solution(topic, base_payload)
+        content = _build_distinct_kinesthetic_asset("solution", topic, generated)
+    elif content_type == "task_sheet":
+        generated = generate_learning_asset(style_row.learning_style, "task_sheet", topic, base_payload)
+        content = _build_distinct_kinesthetic_asset("task_sheet", topic, generated)
     elif not str(content).strip():
         content = generate_learning_asset(style_row.learning_style, content_type, topic, base_payload)
 
