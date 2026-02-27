@@ -288,6 +288,119 @@ a {
   border: 1px solid #c8dcf8;
 }
 
+
+.chat-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f8fbff;
+  padding: 0.75rem;
+}
+
+.prompt-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 0.45rem;
+  flex: 1;
+}
+
+.prompt-chip {
+  border: 1px solid #d4deec;
+  background: #fff;
+  color: #24384f;
+  text-align: left;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+  line-height: 1.35;
+}
+
+.prompt-chip:hover {
+  background: #eef4ff;
+  border-color: #b8c8e4;
+}
+
+.chat-actions-right {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chat-window {
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8ff 100%);
+  border: 1px solid #d7e2f0;
+  border-radius: 16px;
+  padding: 1rem;
+  height: 54vh;
+  overflow: auto;
+}
+
+.chat-window::-webkit-scrollbar {
+  width: 10px;
+}
+
+.chat-window::-webkit-scrollbar-thumb {
+  background: #c8d5ea;
+  border-radius: 999px;
+}
+
+.chat-msg {
+  margin-bottom: 0.9rem;
+}
+
+.chat-bubble {
+  max-width: min(760px, 84%);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 8px 18px rgba(26, 48, 82, 0.08);
+}
+
+.chat-user .chat-bubble {
+  border-top-right-radius: 8px;
+}
+
+.chat-assistant .chat-bubble {
+  border-top-left-radius: 8px;
+  background: #fff;
+}
+
+.asset-panel {
+  background: #f9fbff;
+  border: 1px solid #d8e3f2;
+  border-left: 4px solid #6a79ff;
+  border-radius: 14px;
+  padding: 0.95rem;
+}
+
+.chat-composer {
+  position: sticky;
+  bottom: 0;
+  border: 1px solid #d7e2f0;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  border-radius: 14px;
+  padding: 0.55rem;
+}
+
+.composer-input {
+  border-radius: 12px;
+  border: 1px solid #cfdae9;
+  background: #fff;
+}
+
+.composer-send {
+  min-width: 92px;
+  border-radius: 12px;
+}
+
 .chatbot-layout {
   display: grid;
   grid-template-columns: 1.75fr 1fr;
@@ -544,7 +657,11 @@ a {
   }
 
   .chat-window {
-    height: 42vh;
+    height: 46vh;
+  }
+
+  .prompt-chip-grid {
+    grid-template-columns: 1fr;
   }
 
   .auth-grid {

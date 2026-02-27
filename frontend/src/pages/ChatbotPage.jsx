@@ -260,16 +260,16 @@ export default function ChatbotPage() {
           <p className="page-subtitle">Mode: <strong>{formatStyle(style)}</strong> | Ask, learn, then jump to synced practice.</p>
         </header>
 
-        <div className="glass-card p-3 p-md-4">
-          <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-            <div className="d-flex gap-2 flex-wrap">
+        <div className="glass-card chat-shell p-3 p-md-4">
+          <div className="chat-actions mb-3">
+            <div className="prompt-chip-grid">
               {quickPrompts.map((p) => (
-                <button key={p} className="btn btn-sm surface-btn" onClick={() => ask(p)} disabled={loading || bootLoading}>
+                <button key={p} className="btn btn-sm prompt-chip" onClick={() => ask(p)} disabled={loading || bootLoading}>
                   {p}
                 </button>
               ))}
             </div>
-            <div className="d-flex gap-2">
+            <div className="chat-actions-right">
               <button className="btn btn-sm surface-btn" onClick={() => loadPrompts(question || response?.askedQuestion || "")} disabled={loading || bootLoading}>
                 New Suggestions
               </button>
@@ -280,7 +280,7 @@ export default function ChatbotPage() {
           {error && <div className="alert alert-danger py-2">{error}</div>}
           {downloadError && <div className="alert alert-danger py-2">{downloadError}</div>}
 
-          <div ref={chatWindowRef} className="chat-window mb-3" style={{ height: "52vh" }}>
+          <div ref={chatWindowRef} className="chat-window mb-3">
             {bootLoading ? (
               <div className="chat-empty">Loading chat...</div>
             ) : conversation.length === 0 ? (
@@ -395,7 +395,7 @@ export default function ChatbotPage() {
                     <button className="btn btn-sm surface-btn" onClick={() => submitFeedback(-1)}>Needs Improvement</button>
                   </div>
                   <textarea
-                    className="form-control"
+                    className="form-control composer-input"
                     rows={2}
                     placeholder="Optional comment to improve future responses..."
                     value={feedbackComment}
@@ -407,9 +407,9 @@ export default function ChatbotPage() {
             </div>
           )}
 
-          <div className="composer">
+          <div className="composer chat-composer">
             <textarea
-              className="form-control"
+              className="form-control composer-input"
               rows={2}
               placeholder="Ask anything..."
               value={question}
@@ -421,7 +421,7 @@ export default function ChatbotPage() {
                 }
               }}
             />
-            <button className="btn brand-btn" onClick={() => ask()} disabled={loading || bootLoading || !question.trim()}>
+            <button className="btn brand-btn composer-send" onClick={() => ask()} disabled={loading || bootLoading || !question.trim()}>
               {loading ? "Thinking..." : "Send"}
             </button>
           </div>
