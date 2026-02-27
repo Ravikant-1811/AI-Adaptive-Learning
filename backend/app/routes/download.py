@@ -10,6 +10,51 @@ from app.services.download_service import create_download_file
 download_bp = Blueprint("download", __name__, url_prefix="/api/downloads")
 
 
+def _build_distinct_kinesthetic_asset(content_type: str, topic: str, generated: str) -> str:
+    topic_line = f"Topic: {topic}"
+    if content_type == "task_sheet":
+        return "\n".join([
+            topic_line,
+            "Document Type: TASK SHEET",
+            "",
+            "Goal:",
+            "Complete the implementation task step-by-step.",
+            "",
+            "Instructions:",
+            "1) Read the problem and required exception flow.",
+            "2) Write Java code from starter structure.",
+            "3) Run at least two test cases (success + failure).",
+            "4) Submit final code with brief notes.",
+            "",
+            "Checklist:",
+            "- Uses try/catch/finally correctly",
+            "- Handles error case with user-friendly message",
+            "- Produces expected output",
+            "",
+            generated,
+        ])
+
+    return "\n".join([
+        topic_line,
+        "Document Type: WORKED SOLUTION",
+        "",
+        "Final Approach:",
+        "Provide a complete solution with reasoning and expected output.",
+        "",
+        "Solution Structure:",
+        "1) Final code",
+        "2) Line-by-line explanation",
+        "3) Expected output",
+        "4) Why this handles exceptions safely",
+        "",
+        "Review Notes:",
+        "- Mention common mistakes",
+        "- Mention improvements/refactor options",
+        "",
+        generated,
+    ])
+
+
 @download_bp.post("/")
 @jwt_required()
 def create_download():
@@ -42,8 +87,13 @@ def create_download():
         )
         topic = latest_chat.question if latest_chat else "learning concept"
 
-    if not str(content).strip():
-        content = generate_learning_asset(style_row.learning_style, content_type, topic, base_content)
+    base_payload = base_content or str(content or "").strip()
+
+    if content_type in {"task_sheet", "solution"}:
+        generated = generate_learning_asset(style_row.learning_style, content_type, topic, base_payload)
+        content = _build_distinct_kinesthetic_asset(content_type, topic, generated)
+    elif not str(content).strip():
+        content = generate_learning_asset(style_row.learning_style, content_type, topic, base_payload)
 
     file_path = create_download_file(user_id, content_type, content)
     row = Download(user_id=user_id, content_type=content_type, file_path=file_path)
