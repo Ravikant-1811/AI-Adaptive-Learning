@@ -74,18 +74,17 @@ export default function ChatbotPage() {
       if (cachedRaw) {
         try {
           const cached = JSON.parse(cachedRaw);
-          const stillExists = rows.some((r) => r.chat_id === cached?.chat_id);
-          if (stillExists) {
-            setResponse(cached);
-            setAutoPack(cached.auto_resources || []);
-          } else {
-            localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
-            setResponse(null);
-            setAutoPack([]);
-          }
+          // Keep latest rich response persisted across reloads so action buttons do not disappear.
+          setResponse(cached || null);
+          setAutoPack(Array.isArray(cached?.auto_resources) ? cached.auto_resources : []);
         } catch {
           localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
+          setResponse(null);
+          setAutoPack([]);
         }
+      } else {
+        setResponse(null);
+        setAutoPack([]);
       }
     } catch {
       setError("Failed to load chat. Please refresh.");

@@ -245,22 +245,41 @@ export default function PracticePage() {
     if (!selectedTask) return;
     setDownloadError("");
     setDownloadSuccess("");
-    const content = [
-      `Task: ${selectedTask.task_name}`,
-      `Description: ${selectedTask.description || ""}`,
+
+    const taskBaseContent = [
+      `Task Name: ${selectedTask.task_name}`,
+      `Task Description: ${selectedTask.description || ""}`,
       "",
-      "Current Code:",
-      code || "",
+      "Starter Code:",
+      selectedTask.starter_code || "",
+      "",
+      "What to deliver:",
+      "1) Working Java code",
+      "2) Exception handling explanation",
+      "3) Output screenshot or output text",
+    ].join("\n");
+
+    const solutionBaseContent = [
+      `Task Name: ${selectedTask.task_name}`,
+      `Task Description: ${selectedTask.description || ""}`,
+      "",
+      "User Attempt:",
+      code || "No code attempt yet.",
       "",
       "Latest Run Output:",
       runOutput.stdout || runOutput.stderr || "No run output yet.",
+      "",
+      "Generate a complete worked solution with explanation and expected output.",
     ].join("\n");
+
+    const base_content = contentType === "solution" ? solutionBaseContent : taskBaseContent;
 
     try {
       const created = await api.post("/downloads/", {
         content_type: contentType,
         topic: selectedTask.task_name,
-        content,
+        content: "",
+        base_content,
       });
       const fileResp = await api.get(`/downloads/file/${created.data.download_id}`, { responseType: "blob" });
       const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
