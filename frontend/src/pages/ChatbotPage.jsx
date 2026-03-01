@@ -55,6 +55,7 @@ export default function ChatbotPage() {
   const [quickPrompts, setQuickPrompts] = useState(QUICK_PROMPTS);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackMsg, setFeedbackMsg] = useState("");
+  const [selectedHistoryId, setSelectedHistoryId] = useState(null);
 
   const loadPrompts = async (topic = "") => {
     try {
@@ -74,6 +75,7 @@ export default function ChatbotPage() {
       setStyle(styleRes.data.learning_style || null);
       const rows = historyRes.data || [];
       setHistory(rows);
+      setSelectedHistoryId(rows?.[0]?.chat_id ?? null);
       const latestTopic = rows?.[0]?.question || "";
       await loadPrompts(latestTopic);
 
@@ -191,6 +193,7 @@ export default function ChatbotPage() {
       setQuestion("");
       const latest = await api.get("/chat/history");
       setHistory(latest.data || []);
+      setSelectedHistoryId((latest.data || [])[0]?.chat_id ?? null);
     } catch (err) {
       setError(err.response?.data?.error || "Chatbot request failed.");
     } finally {
@@ -203,6 +206,7 @@ export default function ChatbotPage() {
     try {
       await api.delete("/chat/history");
       setHistory([]);
+      setSelectedHistoryId(null);
       setResponse(null);
       setAutoPack([]);
       localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
@@ -214,6 +218,7 @@ export default function ChatbotPage() {
 
   const startNewChat = () => {
     setQuestion("");
+    setSelectedHistoryId(null);
     setResponse(null);
     setAutoPack([]);
     setFeedbackComment("");
@@ -259,10 +264,23 @@ export default function ChatbotPage() {
       setFeedbackMsg(rating === 1 ? "Marked as helpful." : "Marked as needs improvement.");
       const latest = await api.get("/chat/history");
       setHistory(latest.data || []);
+      setSelectedHistoryId((latest.data || [])[0]?.chat_id ?? null);
     } catch (err) {
       setFeedbackMsg(err.response?.data?.error || "Failed to save feedback.");
     }
   };
+
+  const focusHistoryMessage = (chatId, questionText = "") => {
+    setSelectedHistoryId(chatId);
+    if (questionText) setQuestion(questionText);
+    setTimeout(() => {
+      const target = document.getElementById(`q-${chatId}`) || document.getElementById(`a-${chatId}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 60);
+  };
+
 
   return (
     <>
@@ -289,11 +307,11 @@ export default function ChatbotPage() {
                 history.map((h) => (
                   <button
                     key={h.chat_id}
-                    className="vak-history-item text-start"
-                    onClick={() => setQuestion(h.question)}
+                    className={`vak-history-item text-start ${selectedHistoryId === h.chat_id ? "active" : ""}`}
+                    onClick={() => focusHistoryMessage(h.chat_id, h.question)}
                     type="button"
                   >
-                    <div className="fw-semibold text-truncate">{h.question}</div>
+                    <div className="vak-history-title">{h.question}</div>
                     <small className="text-muted">{shortTime(h.timestamp) || "recent"}</small>
                   </button>
                 ))
