@@ -698,3 +698,42 @@ a {
     align-items: stretch;
   }
 }
+
+/* ChatGPT-like refinement */
+.vak-history-item {
+  width: 100%;
+  text-align: left;
+}
+
+.vak-chat-window {
+  background: #f8fafc;
+}
+
+.vak-chat-window .chat-user .chat-bubble {
+  background: linear-gradient(135deg, #5a6dff, #8f35ef);
+  color: #fff;
+  border: none;
+  box-shadow: 0 8px 20px rgba(77, 107, 255, 0.24);
+}
+
+.vak-chat-window .chat-assistant .chat-bubble {
+  background: #ffffff;
+  border: 1px solid #d9e4f3;
+  box-shadow: 0 8px 16px rgba(26, 50, 86, 0.08);
+}
+
+.vak-chat-window .chat-text {
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.vak-composer .btn.brand-btn {
+  min-width: 92px;
+  border-radius: 12px;
+}
+
+@media (max-width: 992px) {
+  .vak-history-list {
+    max-height: 220px;
+  }
+}
