@@ -411,6 +411,35 @@ export default function ChatbotPage() {
                         <img src={response.assets.ai_image_url} alt="ai generated learning visual" className="asset-image asset-image-hero mb-2" />
                       </a>
                     )}
+                    {(response.assets.graph_image_url || response.assets.bar_graph_image_url || response.assets.flowchart_image_url || response.assets.topic_image_url || response.assets.gif_url) && (
+                      <div className="visual-gallery mb-2">
+                        {response.assets.topic_image_url && (
+                          <a href={response.assets.topic_image_url} target="_blank" rel="noreferrer">
+                            <img src={response.assets.topic_image_url} alt="visual concept map" className="asset-image" />
+                          </a>
+                        )}
+                        {response.assets.graph_image_url && (
+                          <a href={response.assets.graph_image_url} target="_blank" rel="noreferrer">
+                            <img src={response.assets.graph_image_url} alt="visual radar graph" className="asset-image" />
+                          </a>
+                        )}
+                        {response.assets.bar_graph_image_url && (
+                          <a href={response.assets.bar_graph_image_url} target="_blank" rel="noreferrer">
+                            <img src={response.assets.bar_graph_image_url} alt="visual bar graph" className="asset-image" />
+                          </a>
+                        )}
+                        {response.assets.flowchart_image_url && (
+                          <a href={response.assets.flowchart_image_url} target="_blank" rel="noreferrer">
+                            <img src={response.assets.flowchart_image_url} alt="visual flowchart" className="asset-image" />
+                          </a>
+                        )}
+                        {response.assets.gif_url && (
+                          <a href={response.assets.gif_url} target="_blank" rel="noreferrer">
+                            <img src={response.assets.gif_url} alt="visual gif" className="asset-image" />
+                          </a>
+                        )}
+                      </div>
+                    )}
                     {response.assets.video_url && (
                       <p className="mb-2"><a href={response.assets.video_url} target="_blank" rel="noreferrer">Open Video Explanation</a></p>
                     )}
