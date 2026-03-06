@@ -216,19 +216,28 @@ def _generate_ai_visual_image(question: str, blueprint: dict) -> str | None:
 
 def _generate_prompt_suggestions(topic: str, style: str) -> list[str]:
     base_topic = topic.strip() or "Java exception handling"
+    style = (style or "visual").strip().lower()
+
+    style_instruction = {
+        "visual": "Questions should ask for diagrams, flow maps, comparisons, and visual memory tricks.",
+        "auditory": "Questions should ask for spoken explanations, recap scripts, and discussion-style understanding.",
+        "kinesthetic": "Questions should ask for hands-on coding tasks, mini projects, and implementation challenges.",
+    }.get(style, "Questions should match learner preference and practical understanding.")
+
     system_prompt = (
-        "You create short learning prompts. Return exactly 6 lines. "
+        "You create personalized learning prompts. Return exactly 6 lines. "
         "Each line must be one user question. No numbering, no bullets, plain text."
     )
     user_prompt = (
         f"Learning style: {style}\n"
         f"Topic: {base_topic}\n"
-        "Generate diverse follow-up questions from beginner to practical level."
+        f"Instruction: {style_instruction}\n"
+        "Generate follow-up questions from beginner to advanced that clearly reflect the learning style."
     )
-    raw = chatgpt_text(system_prompt, user_prompt, temperature=0.8)
+    raw = chatgpt_text(system_prompt, user_prompt, temperature=0.75)
     if raw:
         rows = [r.strip(" -\t\r") for r in raw.splitlines() if r.strip()]
-        rows = [r for r in rows if len(r) > 5]
+        rows = [r for r in rows if len(r) > 10]
         deduped = []
         seen = set()
         for row in rows:
@@ -242,16 +251,34 @@ def _generate_prompt_suggestions(topic: str, style: str) -> list[str]:
         if len(deduped) >= 4:
             return deduped
 
-    fallback = [
-        f"Explain the core idea of {base_topic}.",
-        f"Show a step-by-step flow for {base_topic}.",
-        f"What are common mistakes in {base_topic}?",
-        f"Give me one real-world example of {base_topic}.",
-        f"How can I practice {base_topic} in 15 minutes?",
-        f"Give me a short quiz on {base_topic}.",
-        f"Compare beginner vs advanced use of {base_topic}.",
-        f"Create one coding task for {base_topic}.",
-    ]
+    fallback_by_style = {
+        "visual": [
+            f"Can you show {base_topic} as a simple flow diagram?",
+            f"What is a visual comparison chart for {base_topic}?",
+            f"Give me a step-by-step visual map for {base_topic}.",
+            f"Which color-coded notes should I use to remember {base_topic}?",
+            f"Show one visual real-world scenario for {base_topic}.",
+            f"Create a quick visual revision sheet for {base_topic}.",
+        ],
+        "auditory": [
+            f"Explain {base_topic} like a spoken lecture for 2 minutes.",
+            f"Give me a voice-style recap script for {base_topic}.",
+            f"What questions should I discuss with a study partner about {base_topic}?",
+            f"How can I memorize {base_topic} by speaking it aloud?",
+            f"Give a conversational example for understanding {base_topic}.",
+            f"Create an audio-friendly summary of {base_topic} in simple words.",
+        ],
+        "kinesthetic": [
+            f"Give me one hands-on coding task for {base_topic}.",
+            f"How can I practice {base_topic} with a mini Java project?",
+            f"What implementation challenge can I solve today on {base_topic}?",
+            f"Give me step-by-step task instructions for {base_topic}.",
+            f"How do I test edge cases practically for {base_topic}?",
+            f"Create a 20-minute coding exercise around {base_topic}.",
+        ],
+    }
+
+    fallback = fallback_by_style.get(style, fallback_by_style["visual"])
     random.shuffle(fallback)
     return fallback[:6]
 
