@@ -9,49 +9,66 @@ from urllib.parse import quote
 
 def _fallback_response(question: str, style: str) -> str:
     topic = question.strip().rstrip("?") or "Java concept"
-    tokens = [w for w in re.findall(r"[A-Za-z][A-Za-z0-9+#-]{2,}", topic) if w.lower() not in {"what", "how", "can", "for", "and", "the", "with", "java"}]
-    focus = tokens[0] if tokens else "Core"
-    secondary = tokens[1] if len(tokens) > 1 else "Practice"
+    words = [w for w in re.findall(r"[A-Za-z][A-Za-z0-9+#-]{2,}", topic) if w.lower() not in {"what", "how", "can", "for", "and", "the", "with", "java", "does"}]
+    focus = words[0] if words else "core concept"
+    support = words[1] if len(words) > 1 else "implementation"
 
-    if style == "visual":
-        return (
-            f"Visual Learning Plan for: {topic}\n\n"
-            f"1. Draw a concept map around {focus}.\n"
-            f"2. Build a flow chart for {secondary} execution path.\n"
-            "3. Add one worked example with inputs and outputs.\n"
-            "4. Create a one-page revision sheet with color-coded key points."
-        )
-    if style == "auditory":
-        return (
-            f"Auditory Learning Script for: {topic}\n\n"
-            f"- Explain {focus} in your own words (60 seconds).\n"
-            "- Read the steps aloud and record a short voice note.\n"
-            f"- Discuss one real use-case of {secondary} with a friend/study group."
-        )
+    style_hint = {
+        "visual": "Use a visual flow map and structured checkpoints while studying.",
+        "auditory": "Read each section out loud and record a 60-second summary.",
+        "kinesthetic": "Implement each step directly in code and test immediately.",
+    }.get(style, "Apply this concept with one practical exercise.")
 
     return (
-        f"Kinesthetic Practice Path for: {topic}\n\n"
-        f"Project 1: Build a mini {focus} checker in Java.\n"
-        f"Project 2: Extend it with {secondary.lower()} test cases.\n\n"
-        "Step 1: Create `Main` class and input/output flow.\n"
-        "Step 2: Implement core logic using small methods.\n"
-        "Step 3: Add exception handling for invalid inputs.\n"
-        "Step 4: Run 3 tests (normal, edge case, invalid case) and refactor."
+        f"1) Concept Overview\n"
+        f"{topic} is mainly about understanding {focus} and applying it correctly during {support}. "
+        "The goal is to get predictable behavior and avoid runtime confusion.\n\n"
+        f"2) Step-by-Step Explanation\n"
+        f"Step 1: Identify where {focus} appears in your code flow.\n"
+        f"Step 2: Define the expected input/output around {support}.\n"
+        "Step 3: Implement logic in small methods so each part is testable.\n"
+        "Step 4: Add validation/error handling for edge cases.\n"
+        "Step 5: Run normal + edge + invalid tests and adjust.\n\n"
+        f"3) Real-World Example\n"
+        f"In a student portal, {topic.lower()} can be used while processing grades, login input, or fee records "
+        "so users get clear output instead of application crashes.\n\n"
+        f"4) Common Mistakes\n"
+        "- Writing everything in one large method\n"
+        "- Ignoring invalid input paths\n"
+        "- Not testing edge cases before final submission\n"
+        "- Using generic handling without specific user messages\n\n"
+        f"5) Quick Revision Summary\n"
+        f"Remember: understand {focus}, implement in small steps, validate input, and test failures intentionally.\n\n"
+        f"6) Next Practice Task\n"
+        f"Build a mini Java program on '{topic}' with at least 2 valid test cases and 1 failure case. "
+        f"{style_hint}"
     )
 
 
 def _generate_chatgpt_explanation(question: str, style: str) -> str | None:
     style_prompt = {
-        "visual": "Give a visual-first explanation with flow structure, diagram-like bullets, and concise steps.",
-        "auditory": "Give a spoken-style explanation in simple conversational language, clear and concise.",
-        "kinesthetic": "Give a hands-on explanation with a practical coding exercise and step-by-step task flow.",
+        "visual": "Use strong structure, visual wording, and flow-oriented sections.",
+        "auditory": "Use conversational spoken style with clear transitions and natural pacing.",
+        "kinesthetic": "Use hands-on language with concrete implementation steps and mini tasks.",
     }
     system_prompt = (
-        "You are an adaptive tutor. Keep responses clear, practical, and beginner friendly. "
-        "Return plain text only."
+        "You are an adaptive tutor. Return detailed plain-text responses only. "
+        "Do not use markdown tables. No code fences. "
+        "Always include these 6 sections in order: "
+        "1) Concept Overview "
+        "2) Step-by-Step Explanation "
+        "3) Real-World Example "
+        "4) Common Mistakes "
+        "5) Quick Revision Summary "
+        "6) Next Practice Task."
     )
-    user_prompt = f"Question: {question}\nLearning style: {style}\nInstruction: {style_prompt.get(style, '')}"
-    return chatgpt_text(system_prompt, user_prompt, temperature=0.5)
+    user_prompt = (
+        f"Question: {question}\n"
+        f"Learning style: {style}\n"
+        f"Instruction: {style_prompt.get(style, '')}\n"
+        "Make each section clear and detailed but concise enough for quick study."
+    )
+    return chatgpt_text(system_prompt, user_prompt, temperature=0.45)
 
 
 def _topic_keywords(topic: str) -> list[str]:
