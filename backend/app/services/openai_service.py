@@ -74,7 +74,7 @@ def chatgpt_json(system_prompt: str, user_prompt: str, temperature: float = 0.3)
                     {"role": "user", "content": user_prompt},
                 ],
             },
-            timeout=12,
+            timeout=25,
         )
         response.raise_for_status()
         data = response.json()
@@ -105,7 +105,7 @@ def chatgpt_text(system_prompt: str, user_prompt: str, temperature: float = 0.4)
                     {"role": "user", "content": user_prompt},
                 ],
             },
-            timeout=12,
+            timeout=25,
         )
         response.raise_for_status()
         data = response.json()

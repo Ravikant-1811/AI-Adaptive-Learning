@@ -8,28 +8,35 @@ from urllib.parse import quote
 
 
 def _fallback_response(question: str, style: str) -> str:
-    topic = question.strip().rstrip("?")
+    topic = question.strip().rstrip("?") or "Java concept"
+    tokens = [w for w in re.findall(r"[A-Za-z][A-Za-z0-9+#-]{2,}", topic) if w.lower() not in {"what", "how", "can", "for", "and", "the", "with", "java"}]
+    focus = tokens[0] if tokens else "Core"
+    secondary = tokens[1] if len(tokens) > 1 else "Practice"
+
     if style == "visual":
         return (
             f"Visual Learning Plan for: {topic}\n\n"
-            "1. Big picture map\n"
-            "2. Process flow and error path\n"
-            "3. One solved visual example\n"
-            "4. One-page visual revision"
+            f"1. Draw a concept map around {focus}.\n"
+            f"2. Build a flow chart for {secondary} execution path.\n"
+            "3. Add one worked example with inputs and outputs.\n"
+            "4. Create a one-page revision sheet with color-coded key points."
         )
     if style == "auditory":
         return (
             f"Auditory Learning Script for: {topic}\n\n"
-            "- Listen in short chunks.\n"
-            "- Repeat key ideas aloud.\n"
-            "- Record your own summary."
+            f"- Explain {focus} in your own words (60 seconds).\n"
+            "- Read the steps aloud and record a short voice note.\n"
+            f"- Discuss one real use-case of {secondary} with a friend/study group."
         )
+
     return (
         f"Kinesthetic Practice Path for: {topic}\n\n"
-        "Step 1: Write code skeleton.\n"
-        "Step 2: Add try/catch/finally.\n"
-        "Step 3: Run and test failure cases.\n"
-        "Step 4: Refactor and re-run."
+        f"Project 1: Build a mini {focus} checker in Java.\n"
+        f"Project 2: Extend it with {secondary.lower()} test cases.\n\n"
+        "Step 1: Create `Main` class and input/output flow.\n"
+        "Step 2: Implement core logic using small methods.\n"
+        "Step 3: Add exception handling for invalid inputs.\n"
+        "Step 4: Run 3 tests (normal, edge case, invalid case) and refactor."
     )
 
 
