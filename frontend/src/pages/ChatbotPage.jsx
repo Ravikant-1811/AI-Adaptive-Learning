@@ -9,6 +9,7 @@ const QUICK_PROMPTS = [
   "Give me one practical coding task",
   "What are common mistakes in Java?",
 ];
+
 const CHAT_LATEST_RESPONSE_KEY = "chatLatestRichResponse";
 const EXT_BY_TYPE = {
   pdf: ".txt",
@@ -50,12 +51,33 @@ export default function ChatbotPage() {
   const [bootLoading, setBootLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloadError, setDownloadError] = useState("");
+  const [downloadSuccess, setDownloadSuccess] = useState("");
   const [autoPack, setAutoPack] = useState([]);
   const [audioSrc, setAudioSrc] = useState("");
   const [quickPrompts, setQuickPrompts] = useState(QUICK_PROMPTS);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [selectedHistoryId, setSelectedHistoryId] = useState(null);
+
+  const selectedChat = useMemo(
+    () => history.find((h) => h.chat_id === selectedHistoryId) || null,
+    [history, selectedHistoryId]
+  );
+
+  const conversation = useMemo(() => {
+    if (!selectedChat) return [];
+    return [
+      { id: `q-${selectedChat.chat_id}`, role: "user", text: selectedChat.question, timestamp: selectedChat.timestamp },
+      {
+        id: `a-${selectedChat.chat_id}`,
+        role: "assistant",
+        text: selectedChat.response,
+        responseType: selectedChat.response_type,
+        sourceQuestion: selectedChat.question,
+        timestamp: selectedChat.timestamp,
+      },
+    ];
+  }, [selectedChat]);
 
   const loadPrompts = async (topic = "") => {
     try {
@@ -76,8 +98,7 @@ export default function ChatbotPage() {
       const rows = historyRes.data || [];
       setHistory(rows);
       setSelectedHistoryId(rows?.[0]?.chat_id ?? null);
-      const latestTopic = rows?.[0]?.question || "";
-      await loadPrompts(latestTopic);
+      await loadPrompts(rows?.[0]?.question || "");
 
       const cachedRaw = localStorage.getItem(CHAT_LATEST_RESPONSE_KEY);
       if (cachedRaw) {
@@ -87,12 +108,7 @@ export default function ChatbotPage() {
           setAutoPack(Array.isArray(cached?.auto_resources) ? cached.auto_resources : []);
         } catch {
           localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
-          setResponse(null);
-          setAutoPack([]);
         }
-      } else {
-        setResponse(null);
-        setAutoPack([]);
       }
     } catch {
       setError("Failed to load chat. Please refresh.");
@@ -105,23 +121,6 @@ export default function ChatbotPage() {
     loadInitial();
   }, []);
 
-  const conversation = useMemo(() => {
-    if (!selectedHistoryId) return [];
-    const row = history.find((h) => h.chat_id === selectedHistoryId);
-    if (!row) return [];
-    return [
-      { id: `q-${row.chat_id}`, role: "user", text: row.question, timestamp: row.timestamp },
-      {
-        id: `a-${row.chat_id}`,
-        role: "assistant",
-        text: row.response,
-        responseType: row.response_type,
-        sourceQuestion: row.question,
-        timestamp: row.timestamp,
-      },
-    ];
-  }, [history, selectedHistoryId]);
-
   useEffect(() => {
     const node = chatWindowRef.current;
     if (!node) return;
@@ -130,11 +129,16 @@ export default function ChatbotPage() {
 
   useEffect(() => {
     return () => {
-      if (audioSrc) {
-        window.URL.revokeObjectURL(audioSrc);
-      }
+      if (audioSrc) window.URL.revokeObjectURL(audioSrc);
     };
   }, [audioSrc]);
+
+  const refreshHistory = async () => {
+    const latest = await api.get("/chat/history");
+    const rows = latest.data || [];
+    setHistory(rows);
+    return rows;
+  };
 
   const ask = async (prefill) => {
     const asked = (prefill || question).trim();
@@ -142,15 +146,18 @@ export default function ChatbotPage() {
 
     setLoading(true);
     setError("");
+    setDownloadError("");
+    setDownloadSuccess("");
     try {
       const res = await api.post("/chat/", { question: asked });
       const richResponse = { ...res.data, askedQuestion: asked };
       setResponse(richResponse);
       setFeedbackComment("");
       setFeedbackMsg("");
-      await loadPrompts(asked);
       setAutoPack(res.data.auto_resources || []);
       localStorage.setItem(CHAT_LATEST_RESPONSE_KEY, JSON.stringify(richResponse));
+      await loadPrompts(asked);
+
       if (audioSrc) {
         window.URL.revokeObjectURL(audioSrc);
         setAudioSrc("");
@@ -163,20 +170,6 @@ export default function ChatbotPage() {
           setAudioSrc(blobUrl);
         } catch {
           // optional asset
-        }
-      } else if ((style || "").toLowerCase() === "auditory") {
-        try {
-          const created = await api.post("/downloads/", {
-            content_type: "audio",
-            topic: asked,
-            content: "",
-            base_content: res.data?.text || "",
-          });
-          const fileResp = await api.get(`/downloads/file/${created.data.download_id}`, { responseType: "blob" });
-          const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
-          setAudioSrc(blobUrl);
-        } catch {
-          setError("Audio generation failed. Please try again.");
         }
       }
 
@@ -193,9 +186,8 @@ export default function ChatbotPage() {
       }
 
       setQuestion("");
-      const latest = await api.get("/chat/history");
-      setHistory(latest.data || []);
-      setSelectedHistoryId((latest.data || [])[0]?.chat_id ?? null);
+      const rows = await refreshHistory();
+      setSelectedHistoryId(rows?.[0]?.chat_id ?? null);
     } catch (err) {
       setError(err.response?.data?.error || "Chatbot request failed.");
     } finally {
@@ -211,6 +203,9 @@ export default function ChatbotPage() {
       setSelectedHistoryId(null);
       setResponse(null);
       setAutoPack([]);
+      setQuestion("");
+      setFeedbackComment("");
+      setFeedbackMsg("");
       localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
       localStorage.removeItem("linkedPracticeBundle");
     } catch {
@@ -219,54 +214,93 @@ export default function ChatbotPage() {
   };
 
   const startNewChat = () => {
-    setQuestion("");
     setSelectedHistoryId(null);
+    setQuestion("");
     setResponse(null);
     setAutoPack([]);
     setFeedbackComment("");
     setFeedbackMsg("");
+    setError("");
+    setDownloadError("");
+    setDownloadSuccess("");
     localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
   };
 
   const downloadById = async (downloadId, label, contentType = "") => {
+    const fileResp = await api.get(`/downloads/file/${downloadId}`, { responseType: "blob" });
+    const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    const ext = EXT_BY_TYPE[contentType] || "";
+    const base = safeFileName(label || `resource_${downloadId}`);
+    link.download = base.endsWith(ext) ? base : `${base}${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  };
+
+  const createAndDownload = async (contentType, topic, baseContent = "") => {
     setDownloadError("");
+    setDownloadSuccess("");
     try {
-      const fileResp = await api.get(`/downloads/file/${downloadId}`, { responseType: "blob" });
-      const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      const ext = EXT_BY_TYPE[contentType] || "";
-      const base = safeFileName(label || `resource_${downloadId}`);
-      link.download = base.endsWith(ext) ? base : `${base}${ext}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      const created = await api.post("/downloads/", {
+        content_type: contentType,
+        topic,
+        content: "",
+        base_content: baseContent,
+      });
+      await downloadById(created.data.download_id, `${topic}_${contentType}`, contentType);
+      setDownloadSuccess(`${contentType} downloaded.`);
     } catch (err) {
-      setDownloadError(err.response?.data?.error || "Failed to download file.");
+      setDownloadError(err.response?.data?.error || "Failed to generate download.");
     }
   };
 
   const openPracticeForTopic = (topic, taskName = "") => {
-    const cleanTopic = (topic || response?.askedQuestion || question || "").trim();
+    const cleanTopic = (topic || question || "").trim();
     if (!cleanTopic) return;
     const taskQuery = taskName ? `&task=${encodeURIComponent(taskName)}` : "";
     navigate(`/practice?topic=${encodeURIComponent(cleanTopic)}${taskQuery}`);
   };
 
+  const handleMessageAction = async (action, msg) => {
+    const topic = msg?.sourceQuestion || selectedChat?.question || response?.askedQuestion || "Java concept";
+    const base = msg?.text || selectedChat?.response || response?.text || "";
+
+    if (action === "practice") {
+      openPracticeForTopic(topic);
+      return;
+    }
+    if (action === "followup") {
+      setQuestion(`Give me one deeper follow-up on: ${topic}`);
+      return;
+    }
+    if (action === "task") {
+      await createAndDownload("task_sheet", topic, base);
+      return;
+    }
+    if (action === "solution") {
+      await createAndDownload("solution", topic, base);
+      return;
+    }
+    if (action === "pdf") {
+      await createAndDownload("pdf", topic, base);
+    }
+  };
+
   const submitFeedback = async (rating) => {
-    if (!response?.chat_id) return;
+    const chatId = response?.chat_id || selectedHistoryId;
+    if (!chatId) return;
     setFeedbackMsg("");
     try {
       await api.post("/chat/feedback", {
-        chat_id: response.chat_id,
+        chat_id: chatId,
         rating,
         comment: feedbackComment.trim(),
       });
       setFeedbackMsg(rating === 1 ? "Marked as helpful." : "Marked as needs improvement.");
-      const latest = await api.get("/chat/history");
-      setHistory(latest.data || []);
-      setSelectedHistoryId((latest.data || [])[0]?.chat_id ?? null);
+      await refreshHistory();
     } catch (err) {
       setFeedbackMsg(err.response?.data?.error || "Failed to save feedback.");
     }
@@ -276,15 +310,16 @@ export default function ChatbotPage() {
     setSelectedHistoryId(chatId);
     setResponse(null);
     setAutoPack([]);
+    setFeedbackComment("");
+    setFeedbackMsg("");
     if (questionText) setQuestion(questionText);
     setTimeout(() => {
       const target = document.getElementById(`q-${chatId}`) || document.getElementById(`a-${chatId}`);
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 60);
   };
 
+  const showLiveAssets = response?.chat_id && selectedHistoryId === response.chat_id;
 
   return (
     <>
@@ -336,11 +371,7 @@ export default function ChatbotPage() {
                 <span className={`pill ${style === "kinesthetic" ? "active" : ""}`}>Kinesthetic</span>
               </div>
               <div className="d-flex gap-2">
-                <button
-                  className="btn btn-sm surface-btn"
-                  onClick={() => loadPrompts(question || response?.askedQuestion || "")}
-                  disabled={loading || bootLoading}
-                >
+                <button className="btn btn-sm surface-btn" onClick={() => loadPrompts(question || selectedChat?.question || "")} disabled={loading || bootLoading}>
                   New Suggestions
                 </button>
                 <button className="btn btn-sm surface-btn" onClick={clearChat} disabled={loading || bootLoading}>
@@ -352,13 +383,14 @@ export default function ChatbotPage() {
             <div ref={chatWindowRef} className="vak-chat-window p-3">
               {error && <div className="alert alert-danger py-2">{error}</div>}
               {downloadError && <div className="alert alert-danger py-2">{downloadError}</div>}
+              {downloadSuccess && <div className="alert alert-success py-2">{downloadSuccess}</div>}
 
               {bootLoading ? (
                 <div className="vak-empty-state">Loading chat...</div>
               ) : conversation.length === 0 ? (
                 <div className="vak-empty-state">
-                  <h4 className="mb-2">Welcome to Adaptive Chat</h4>
-                  <p className="text-muted mb-3">Ask a question and get style-based explanation, downloads, and practice tasks.</p>
+                  <h4 className="mb-2">Start a New Chat</h4>
+                  <p className="text-muted mb-3">Ask anything and use action buttons for practice, task sheet, solution, and PDF.</p>
                   <div className="vak-quick-grid">
                     {quickPrompts.map((p) => (
                       <button key={p} className="btn surface-btn text-start" onClick={() => ask(p)}>
@@ -376,9 +408,11 @@ export default function ChatbotPage() {
                         <pre className="chat-text">{msg.text}</pre>
                         {msg.role === "assistant" && (
                           <div className="d-flex flex-wrap gap-2 mt-2">
-                            <button className="btn btn-sm surface-btn" onClick={() => openPracticeForTopic(msg.sourceQuestion)}>
-                              Practice This Topic
-                            </button>
+                            <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("practice", msg)}>Practice</button>
+                            <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("task", msg)}>Download Task</button>
+                            <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("solution", msg)}>Download Solution</button>
+                            <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("pdf", msg)}>Download PDF</button>
+                            <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("followup", msg)}>Follow-up</button>
                           </div>
                         )}
                       </div>
@@ -389,21 +423,15 @@ export default function ChatbotPage() {
               )}
             </div>
 
-            {(response?.practice?.tasks?.length > 0 || response?.assets) && (
+            {showLiveAssets && (response?.practice?.tasks?.length > 0 || response?.assets) && (
               <div className="p-3" style={{ borderTop: "1px solid var(--line)", background: "#fbfbfe" }}>
                 {response?.practice?.tasks?.length > 0 && (
                   <div className="asset-panel mb-3">
                     <h6 className="mb-2">Assigned Practice Tasks ({response.practice.source})</h6>
                     <div className="d-flex flex-wrap gap-2 mb-2">
-                      <button className="btn btn-sm brand-btn" onClick={() => openPracticeForTopic(response.practice.topic)}>
-                        Start Topic Practice
-                      </button>
+                      <button className="btn btn-sm brand-btn" onClick={() => openPracticeForTopic(response.practice.topic)}>Start Topic Practice</button>
                       {response.practice.tasks.map((task) => (
-                        <button
-                          key={`start-${task.task_name}`}
-                          className="btn btn-sm surface-btn"
-                          onClick={() => openPracticeForTopic(response.practice.topic, task.task_name)}
-                        >
+                        <button key={`start-${task.task_name}`} className="btn btn-sm surface-btn" onClick={() => openPracticeForTopic(response.practice.topic, task.task_name)}>
                           Start: {task.task_name}
                         </button>
                       ))}
@@ -411,11 +439,7 @@ export default function ChatbotPage() {
                     {autoPack.length > 0 && (
                       <div className="d-flex flex-wrap gap-2">
                         {autoPack.map((item) => (
-                          <button
-                            key={item.download_id}
-                            className="btn btn-sm surface-btn"
-                            onClick={() => downloadById(item.download_id, `${item.content_type}_${item.download_id}`, item.content_type)}
-                          >
+                          <button key={item.download_id} className="btn btn-sm surface-btn" onClick={() => downloadById(item.download_id, `${item.content_type}_${item.download_id}`, item.content_type)}>
                             Download {item.content_type}
                           </button>
                         ))}
@@ -433,38 +457,7 @@ export default function ChatbotPage() {
                         <img src={response.assets.ai_image_url} alt="ai generated learning visual" className="asset-image asset-image-hero mb-2" />
                       </a>
                     )}
-                    {(response.assets.graph_image_url || response.assets.bar_graph_image_url || response.assets.flowchart_image_url || response.assets.topic_image_url || response.assets.gif_url) && (
-                      <div className="visual-gallery mb-2">
-                        {response.assets.topic_image_url && (
-                          <a href={response.assets.topic_image_url} target="_blank" rel="noreferrer">
-                            <img src={response.assets.topic_image_url} alt="visual concept map" className="asset-image" />
-                          </a>
-                        )}
-                        {response.assets.graph_image_url && (
-                          <a href={response.assets.graph_image_url} target="_blank" rel="noreferrer">
-                            <img src={response.assets.graph_image_url} alt="visual radar graph" className="asset-image" />
-                          </a>
-                        )}
-                        {response.assets.bar_graph_image_url && (
-                          <a href={response.assets.bar_graph_image_url} target="_blank" rel="noreferrer">
-                            <img src={response.assets.bar_graph_image_url} alt="visual bar graph" className="asset-image" />
-                          </a>
-                        )}
-                        {response.assets.flowchart_image_url && (
-                          <a href={response.assets.flowchart_image_url} target="_blank" rel="noreferrer">
-                            <img src={response.assets.flowchart_image_url} alt="visual flowchart" className="asset-image" />
-                          </a>
-                        )}
-                        {response.assets.gif_url && (
-                          <a href={response.assets.gif_url} target="_blank" rel="noreferrer">
-                            <img src={response.assets.gif_url} alt="visual gif" className="asset-image" />
-                          </a>
-                        )}
-                      </div>
-                    )}
-                    {response.assets.video_url && (
-                      <p className="mb-2"><a href={response.assets.video_url} target="_blank" rel="noreferrer">Open Video Explanation</a></p>
-                    )}
+                    {response.assets.video_url && <p className="mb-2"><a href={response.assets.video_url} target="_blank" rel="noreferrer">Open Video Explanation</a></p>}
                     {response.assets.audio_script && <pre className="chat-text mb-2">{response.assets.audio_script}</pre>}
                     {audioSrc && (
                       <div>
@@ -473,24 +466,6 @@ export default function ChatbotPage() {
                       </div>
                     )}
                     {response.assets.starter_code && <pre className="chat-text">{response.assets.starter_code}</pre>}
-
-                    {response.chat_id && (
-                      <div className="mt-3">
-                        <p className="mb-1"><strong>Response Quality Feedback</strong></p>
-                        <div className="d-flex flex-wrap gap-2 mb-2">
-                          <button className="btn btn-sm surface-btn" onClick={() => submitFeedback(1)}>Helpful</button>
-                          <button className="btn btn-sm surface-btn" onClick={() => submitFeedback(-1)}>Needs Improvement</button>
-                        </div>
-                        <textarea
-                          className="form-control"
-                          rows={2}
-                          placeholder="Optional comment to improve future responses..."
-                          value={feedbackComment}
-                          onChange={(e) => setFeedbackComment(e.target.value)}
-                        />
-                        {feedbackMsg && <small className="text-muted d-block mt-1">{feedbackMsg}</small>}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -515,6 +490,23 @@ export default function ChatbotPage() {
                   {loading ? "Thinking..." : "Send"}
                 </button>
               </div>
+              {(response?.chat_id || selectedHistoryId) && (
+                <div className="mt-2">
+                  <p className="mb-1"><strong>Response Quality Feedback</strong></p>
+                  <div className="d-flex flex-wrap gap-2 mb-2">
+                    <button className="btn btn-sm surface-btn" onClick={() => submitFeedback(1)}>Helpful</button>
+                    <button className="btn btn-sm surface-btn" onClick={() => submitFeedback(-1)}>Needs Improvement</button>
+                  </div>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder="Optional comment to improve future responses..."
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                  />
+                  {feedbackMsg && <small className="text-muted d-block mt-1">{feedbackMsg}</small>}
+                </div>
+              )}
             </div>
           </section>
         </div>
