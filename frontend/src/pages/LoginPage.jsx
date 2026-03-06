@@ -47,9 +47,14 @@ export default function LoginPage() {
             <input type="password" className="form-control" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
             <button className="btn brand-btn">Login as User</button>
           </form>
-          <p className="mt-3 mb-1">No account? <Link to="/register">Create one</Link></p>
-          <p className="mb-1"><Link to="/admin-login">Admin Login</Link></p>
-          <p className="mb-0"><Link to="/reset-password">Forgot password?</Link></p>
+          <div className="auth-actions mt-3">
+            <p className="auth-actions-title mb-2">No account yet?</p>
+            <Link to="/register" className="btn surface-btn w-100 mb-2">Create Account</Link>
+            <div className="auth-links-row">
+              <Link to="/admin-login" className="auth-link-pill">Admin Login</Link>
+              <Link to="/reset-password" className="auth-link-pill">Forgot Password</Link>
+            </div>
+          </div>
         </section>
       </div>
     </div>
