@@ -106,19 +106,21 @@ export default function ChatbotPage() {
   }, []);
 
   const conversation = useMemo(() => {
-    const rows = [...history].reverse();
-    return rows.flatMap((h) => [
-      { id: `q-${h.chat_id}`, role: "user", text: h.question, timestamp: h.timestamp },
+    if (!selectedHistoryId) return [];
+    const row = history.find((h) => h.chat_id === selectedHistoryId);
+    if (!row) return [];
+    return [
+      { id: `q-${row.chat_id}`, role: "user", text: row.question, timestamp: row.timestamp },
       {
-        id: `a-${h.chat_id}`,
+        id: `a-${row.chat_id}`,
         role: "assistant",
-        text: h.response,
-        responseType: h.response_type,
-        sourceQuestion: h.question,
-        timestamp: h.timestamp,
+        text: row.response,
+        responseType: row.response_type,
+        sourceQuestion: row.question,
+        timestamp: row.timestamp,
       },
-    ]);
-  }, [history]);
+    ];
+  }, [history, selectedHistoryId]);
 
   useEffect(() => {
     const node = chatWindowRef.current;
@@ -272,6 +274,8 @@ export default function ChatbotPage() {
 
   const focusHistoryMessage = (chatId, questionText = "") => {
     setSelectedHistoryId(chatId);
+    setResponse(null);
+    setAutoPack([]);
     if (questionText) setQuestion(questionText);
     setTimeout(() => {
       const target = document.getElementById(`q-${chatId}`) || document.getElementById(`a-${chatId}`);
@@ -366,7 +370,7 @@ export default function ChatbotPage() {
               ) : (
                 <>
                   {conversation.map((msg) => (
-                    <div key={msg.id} className={`chat-msg ${msg.role === "user" ? "chat-user" : "chat-assistant"}`}>
+                    <div id={msg.id} key={msg.id} className={`chat-msg ${msg.role === "user" ? "chat-user" : "chat-assistant"}`}>
                       <div className="chat-bubble">
                         {msg.role === "assistant" && msg.responseType && <small className="chat-meta">{msg.responseType} response</small>}
                         <pre className="chat-text">{msg.text}</pre>
