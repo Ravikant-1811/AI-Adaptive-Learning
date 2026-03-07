@@ -84,6 +84,7 @@ def ask_chatbot():
     result = generate_adaptive_response(question, style_row.learning_style)
     # Generate topic-specific tasks; fallback logic inside service handles failures gracefully.
     practice_tasks, practice_source = generate_practice_tasks_from_topic(question, count=3, allow_ai=True)
+    audio_download_id = None
     try:
         auto_resources = _auto_generate_resources(
             user_id=user_id,
@@ -91,6 +92,14 @@ def ask_chatbot():
             topic=question,
             base_content=result["text"],
         )
+
+        if style_row.learning_style == "auditory":
+            audio_text = result.get("assets", {}).get("audio_script") or result.get("text", "")
+            audio_path = create_download_file(user_id, "audio", audio_text)
+            audio_row = Download(user_id=user_id, content_type="audio", file_path=audio_path)
+            db.session.add(audio_row)
+            db.session.flush()
+            audio_download_id = audio_row.download_id
 
         history = ChatHistory(
             user_id=user_id,
@@ -107,6 +116,8 @@ def ask_chatbot():
 
     result["auto_resources"] = auto_resources
     result["chat_id"] = history.chat_id
+    if audio_download_id:
+        result["audio_download_id"] = audio_download_id
     result["practice"] = {
         "topic": question,
         "source": practice_source,
