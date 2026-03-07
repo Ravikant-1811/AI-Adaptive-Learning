@@ -394,6 +394,50 @@ def _visual_topic_image_url(blueprint: dict) -> str:
     return _svg_data_uri(svg)
 
 
+
+
+def _generate_ai_visual_variants(question: str, blueprint: dict) -> dict[str, str | None]:
+    enabled = os.getenv("OPENAI_VISUAL_MULTI_IMAGE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return {
+            "topic_image_url": None,
+            "flowchart_image_url": None,
+            "graph_image_url": None,
+            "bar_graph_image_url": None,
+        }
+
+    title = blueprint.get("title", question)
+    concepts = ", ".join(blueprint.get("concept_nodes", [])[:4])
+    steps = " -> ".join(blueprint.get("flow_steps", [])[:5])
+    axes = ", ".join(blueprint.get("radar_axes", [])[:5])
+    bars = ", ".join(blueprint.get("bar_labels", [])[:4])
+
+    topic_prompt = (
+        "Create an educational concept-map illustration for programming students. "
+        "Style: clean infographic, bright but professional, high readability, no logos. "
+        f"Topic: {question}. Title: {title}. Concepts: {concepts}."
+    )
+    flow_prompt = (
+        "Create a clear flowchart-style educational image with boxes and arrows for this programming topic. "
+        "Keep text short and readable. "
+        f"Topic: {question}. Process steps: {steps}."
+    )
+    graph_prompt = (
+        "Create a radar/spider-chart style educational visual as an infographic. "
+        "Show comparative dimensions with labels and values feel. "
+        f"Topic: {question}. Dimensions: {axes}."
+    )
+    bar_prompt = (
+        "Create a modern bar-chart style educational visual with labeled bars and clean axis hints. "
+        f"Topic: {question}. Bar categories: {bars}."
+    )
+
+    return {
+        "topic_image_url": generate_image_data_url(topic_prompt, size="1024x1024"),
+        "flowchart_image_url": generate_image_data_url(flow_prompt, size="1024x1024"),
+        "graph_image_url": generate_image_data_url(graph_prompt, size="1024x1024"),
+        "bar_graph_image_url": generate_image_data_url(bar_prompt, size="1024x1024"),
+    }
 def get_quick_prompts(topic: str, style: str) -> list[str]:
     return _generate_prompt_suggestions(topic, style)
 
@@ -407,6 +451,7 @@ def generate_adaptive_response(question: str, style: str) -> dict:
     if style == "visual":
         blueprint = _generate_visual_blueprint(question, text)
         ai_visual_image_url = _generate_ai_visual_image(question, blueprint)
+        ai_variants = _generate_ai_visual_variants(question, blueprint)
         return {
             "response_type": "visual",
             "ai_used": ai_used,
@@ -414,10 +459,10 @@ def generate_adaptive_response(question: str, style: str) -> dict:
             "assets": {
                 "ai_image_url": ai_visual_image_url,
                 "diagram": " -> ".join(blueprint["flow_steps"]),
-                "graph_image_url": _visual_chart_url(blueprint),
-                "bar_graph_image_url": _visual_bar_chart_url(blueprint),
-                "flowchart_image_url": _visual_mermaid_url(blueprint),
-                "topic_image_url": _visual_topic_image_url(blueprint),
+                "graph_image_url": ai_variants.get("graph_image_url") or _visual_chart_url(blueprint),
+                "bar_graph_image_url": ai_variants.get("bar_graph_image_url") or _visual_bar_chart_url(blueprint),
+                "flowchart_image_url": ai_variants.get("flowchart_image_url") or _visual_mermaid_url(blueprint),
+                "topic_image_url": ai_variants.get("topic_image_url") or _visual_topic_image_url(blueprint),
                 "video_url": _youtube_search_url(topic),
                 "gif_url": "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
                 "suggested_downloads": ["pdf", "video"],
