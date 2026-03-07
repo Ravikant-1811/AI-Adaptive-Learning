@@ -97,19 +97,12 @@ export default function ChatbotPage() {
       setStyle(styleRes.data.learning_style || null);
       const rows = historyRes.data || [];
       setHistory(rows);
-      setSelectedHistoryId(rows?.[0]?.chat_id ?? null);
+      setSelectedHistoryId(null);
       await loadPrompts(rows?.[0]?.question || "");
 
-      const cachedRaw = localStorage.getItem(CHAT_LATEST_RESPONSE_KEY);
-      if (cachedRaw) {
-        try {
-          const cached = JSON.parse(cachedRaw);
-          setResponse(cached || null);
-          setAutoPack(Array.isArray(cached?.auto_resources) ? cached.auto_resources : []);
-        } catch {
-          localStorage.removeItem(CHAT_LATEST_RESPONSE_KEY);
-        }
-      }
+      // Always open in New Chat mode: do not auto-restore latest response panel.
+      setResponse(null);
+      setAutoPack([]);
     } catch {
       setError("Failed to load chat. Please refresh.");
     } finally {
@@ -187,7 +180,7 @@ export default function ChatbotPage() {
 
       setQuestion("");
       const rows = await refreshHistory();
-      setSelectedHistoryId(rows?.[0]?.chat_id ?? null);
+      setSelectedHistoryId(null);
     } catch (err) {
       setError(err.response?.data?.error || "Chatbot request failed.");
     } finally {
