@@ -3,52 +3,20 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from sqlalchemy import text
+from app.config import build_runtime_config, cors_origins_from_env
 from app.extensions import db, jwt
-
-
-def _is_truthy(value: str | None, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _cors_origins_from_env() -> list[str] | str:
-    raw = os.getenv("CORS_ORIGINS", "*").strip()
-    if raw == "*":
-        return "*"
-    origins = [item.strip() for item in raw.split(",") if item.strip()]
-    return origins or "*"
 
 
 def create_app():
     load_dotenv()
     app = Flask(__name__)
 
-    app_env = os.getenv("APP_ENV", "development").strip().lower()
-    is_production = app_env == "production"
+    runtime = build_runtime_config()
+    app.config.update(runtime)
+    app_env = runtime["APP_ENV"]
+    database_uri = runtime["SQLALCHEMY_DATABASE_URI"]
 
-    secret_key = os.getenv("SECRET_KEY", "dev-secret")
-    jwt_secret = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
-    if is_production and (secret_key == "dev-secret" or jwt_secret == "dev-jwt-secret"):
-        raise RuntimeError("Production requires strong SECRET_KEY and JWT_SECRET_KEY values")
-
-    app.config["SECRET_KEY"] = secret_key
-    app.config["JWT_SECRET_KEY"] = jwt_secret
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_SECONDS", "86400"))
-
-    database_uri = os.getenv("DATABASE_URL", "sqlite:///adaptive_learning.db")
-    app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    if database_uri.startswith("sqlite"):
-        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-            "connect_args": {
-                "timeout": int(os.getenv("SQLITE_TIMEOUT_SECONDS", "30")),
-                "check_same_thread": False,
-            }
-        }
-
-    cors_origins = _cors_origins_from_env()
+    cors_origins = cors_origins_from_env()
     CORS(
         app,
         resources={r"/api/*": {"origins": cors_origins}},
@@ -58,21 +26,9 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
 
-    from app.routes.auth import auth_bp
-    from app.routes.style import style_bp
-    from app.routes.chat import chat_bp
-    from app.routes.practice import practice_bp
-    from app.routes.download import download_bp
-    from app.routes.admin import admin_bp
-    from app.routes.dashboard import dashboard_bp
+    from app.routes import register_blueprints
 
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(style_bp)
-    app.register_blueprint(chat_bp)
-    app.register_blueprint(practice_bp)
-    app.register_blueprint(download_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(dashboard_bp)
+    register_blueprints(app)
 
     @app.get("/")
     def root():
