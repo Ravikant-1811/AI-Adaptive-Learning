@@ -272,6 +272,7 @@ def get_topic_catalog() -> list[dict]:
 
 def _validate_tasks(items: list[dict]) -> list[dict]:
     valid = []
+    name_counts: dict[str, int] = {}
     for item in items:
         task_name = str(item.get("task_name", "")).strip()
         description = str(item.get("description", "")).strip()
@@ -280,9 +281,13 @@ def _validate_tasks(items: list[dict]) -> list[dict]:
             continue
         if "class" not in starter_code or "main" not in starter_code:
             continue
+        key = task_name.lower()
+        idx = name_counts.get(key, 0) + 1
+        name_counts[key] = idx
+        unique_name = task_name if idx == 1 else f"{task_name} ({idx})"
         valid.append(
             {
-                "task_name": task_name,
+                "task_name": unique_name,
                 "description": description,
                 "starter_code": starter_code,
             }

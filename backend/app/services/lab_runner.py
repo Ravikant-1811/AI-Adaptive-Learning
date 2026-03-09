@@ -24,6 +24,13 @@ def _run_java_locally(source_code: str) -> dict | None:
 
     try:
         with tempfile.TemporaryDirectory(prefix="adaptive_java_") as tmpdir:
+            # Provide default files for file-handling tasks so learners do not hit
+            # false negatives like "File not found" on local runner.
+            with open(os.path.join(tmpdir, "input.txt"), "w", encoding="utf-8") as sample_in:
+                sample_in.write("Sample input from practice runner\n42\n")
+            with open(os.path.join(tmpdir, "data.txt"), "w", encoding="utf-8") as sample_data:
+                sample_data.write("10\n20\n30\n")
+
             file_path = os.path.join(tmpdir, f"{class_name}.java")
             with open(file_path, "w", encoding="utf-8") as handle:
                 handle.write(source_code)

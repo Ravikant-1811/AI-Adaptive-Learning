@@ -334,15 +334,18 @@ export default function PracticePage() {
   return (
     <>
       <NavBar />
-      <div className="container page-wrap">
+      <div className="container page-wrap practice-v2">
         <header className="page-header">
           <p className="page-kicker mb-1">Hands-on Workspace</p>
           <h2 className="page-title">Virtual Java Practice Lab</h2>
           <p className="page-subtitle">Run, submit, and track coding tasks synced from chatbot learning topics.</p>
         </header>
 
-        <div className="glass-card p-4 mb-4">
-          <h4>Interactive Task Runner</h4>
+        <div className="glass-card p-4 mb-4 practice-hero">
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h4 className="mb-0">Interactive Task Runner</h4>
+            <span className="practice-time-badge">Time: {timeSpent}s</span>
+          </div>
           {linkedTopicParam && (
             <div className="alert alert-primary py-2">
               Synced from chat topic: <strong>{linkedTopicParam}</strong>
@@ -351,7 +354,6 @@ export default function PracticePage() {
             </div>
           )}
 
-          <p className="mb-2">Time spent: {timeSpent}s</p>
           {pageError && <div className="alert alert-danger py-2">{pageError}</div>}
           {submitError && <div className="alert alert-danger py-2">{submitError}</div>}
           {submitSuccess && <div className="alert alert-success py-2">{submitSuccess}</div>}
@@ -371,7 +373,7 @@ export default function PracticePage() {
           {taskTopic && <p className="mb-2 text-muted">Current Topic: <strong>{taskTopic}</strong></p>}
           <p className="mb-2 text-muted">Tasks Loaded: <strong>{tasks.length}</strong></p>
 
-          <div className="d-flex gap-2 mb-3">
+          <div className="d-flex gap-2 mb-3 practice-topic-tools">
             <select
               className="form-select"
               value={selectedTopic}
@@ -425,45 +427,54 @@ export default function PracticePage() {
             {pageLoading ? "Refreshing..." : "Refresh Tasks"}
           </button>
 
-          <label className="form-label">Select Task</label>
-          <select
-            className="form-select mb-2"
-            value={selectedTask?.task_name || ""}
-            onChange={(e) => onTaskChange(e.target.value)}
-            disabled={pageLoading || tasks.length === 0}
-          >
-            {tasks.length === 0 && <option value="">No tasks available</option>}
-            {tasks.map((t) => (
-              <option key={t.task_name} value={t.task_name}>
-                {t.task_name}
-              </option>
-            ))}
-          </select>
+          <div className="row g-3">
+            <div className="col-xl-4">
+              <div className="practice-panel h-100">
+                <label className="form-label fw-semibold">Select Task</label>
+                <select
+                  className="form-select mb-2"
+                  value={selectedTask?.task_name || ""}
+                  onChange={(e) => onTaskChange(e.target.value)}
+                  disabled={pageLoading || tasks.length === 0}
+                >
+                  {tasks.length === 0 && <option value="">No tasks available</option>}
+                  {tasks.map((t, idx) => (
+                    <option key={`${t.task_name}-${idx}`} value={t.task_name}>
+                      {idx + 1}. {t.task_name}
+                    </option>
+                  ))}
+                </select>
+                {selectedTask?.description && <p className="text-muted mb-0">{selectedTask.description}</p>}
+              </div>
+            </div>
 
-          {selectedTask?.description && <p className="text-muted">{selectedTask.description}</p>}
-
-          <textarea className="form-control" rows={14} value={code} onChange={(e) => setCode(e.target.value)} />
-
-          <div className="d-flex gap-2 mt-3">
-            <button className="btn btn-outline-primary" onClick={runCode} disabled={loading}>
-              {loading ? "Running..." : "Run Code"}
-            </button>
-            <button className="btn btn-warning" onClick={submit} disabled={!selectedTask || submitting}>
-              {submitting ? "Submitting..." : "Submit Activity"}
-            </button>
-            <button className="btn surface-btn" onClick={() => downloadPracticeAsset("task_sheet")}>
-              Download Task
-            </button>
-            <button className="btn surface-btn" onClick={() => downloadPracticeAsset("solution")}>
-              Download Solution
-            </button>
+            <div className="col-xl-8">
+              <div className="practice-panel">
+                <label className="form-label fw-semibold">Java Code Editor</label>
+                <textarea className="form-control practice-editor" rows={14} value={code} onChange={(e) => setCode(e.target.value)} />
+                <div className="d-flex gap-2 mt-3 flex-wrap">
+                  <button className="btn btn-primary" onClick={runCode} disabled={loading}>
+                    {loading ? "Running..." : "Run Code"}
+                  </button>
+                  <button className="btn btn-warning" onClick={submit} disabled={!selectedTask || submitting}>
+                    {submitting ? "Submitting..." : "Submit Activity"}
+                  </button>
+                  <button className="btn surface-btn" onClick={() => downloadPracticeAsset("task_sheet")}>
+                    Download Task
+                  </button>
+                  <button className="btn surface-btn" onClick={() => downloadPracticeAsset("solution")}>
+                    Download Solution
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {downloadError && <div className="alert alert-danger py-2 mt-2 mb-0">{downloadError}</div>}
           {downloadSuccess && <div className="alert alert-success py-2 mt-2 mb-0">{downloadSuccess}</div>}
 
           {(runOutput.stdout || runOutput.stderr || runOutput.status || loading) && (
-            <div className="mt-3 border rounded p-3 bg-light">
+            <div className="mt-3 border rounded p-3 bg-light practice-output">
               <p className="mb-1"><strong>Status:</strong> {loading ? "running" : (runOutput.status || "n/a")}</p>
               {runOutput.runner && <p className="mb-1"><strong>Runner:</strong> {runOutput.runner}</p>}
               {runOutput.note && <p className="mb-1 text-muted"><small>{runOutput.note}</small></p>}
@@ -474,37 +485,47 @@ export default function PracticePage() {
           )}
         </div>
 
-        <div className="glass-card p-4">
-          <h5 className="mb-3">All Topics and Tasks</h5>
-          {topicCatalog.length === 0 ? (
-            <p className="text-muted">No topics available.</p>
-          ) : (
-            <div className="d-grid gap-3 mb-4">
-              {topicCatalog.map((topicItem) => (
-                <div key={topicItem.topic} className="border rounded p-3">
-                  <h6 className="mb-2">{topicItem.topic}</h6>
-                  <ul className="mb-0">
-                    {(topicItem.tasks || []).map((task) => (
-                      <li key={`${topicItem.topic}-${task.task_name}`}>
-                        <strong>{task.task_name}</strong>: {task.description}
-                      </li>
-                    ))}
-                  </ul>
+        <div className="row g-3">
+          <div className="col-xl-8">
+            <div className="glass-card p-4 h-100">
+              <h5 className="mb-3">All Topics and Tasks</h5>
+              {topicCatalog.length === 0 ? (
+                <p className="text-muted">No topics available.</p>
+              ) : (
+                <div className="d-grid gap-3 mb-2">
+                  {topicCatalog.map((topicItem) => (
+                    <div key={topicItem.topic} className="practice-topic-card p-3">
+                      <h6 className="mb-2">{topicItem.topic}</h6>
+                      <ul className="mb-0">
+                        {(topicItem.tasks || []).map((task, idx) => (
+                          <li key={`${topicItem.topic}-${task.task_name}-${idx}`}>
+                            <strong>{idx + 1}. {task.task_name}</strong>: {task.description}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-
-          <h5>Recent Activity</h5>
-          {activities.length === 0 ? (
-            <p className="text-muted mb-0">No activity yet.</p>
-          ) : (
-            <ul className="mb-0">
-              {activities.map((a) => (
-                <li key={a.activity_id}>{a.task_name} | {a.status} | {a.time_spent}s</li>
-              ))}
-            </ul>
-          )}
+          </div>
+          <div className="col-xl-4">
+            <div className="glass-card p-4 h-100">
+              <h5 className="mb-3">Recent Activity</h5>
+              {activities.length === 0 ? (
+                <p className="text-muted mb-0">No activity yet.</p>
+              ) : (
+                <div className="d-grid gap-2">
+                  {activities.map((a) => (
+                    <div key={a.activity_id} className="practice-activity-item">
+                      <div className="fw-semibold">{a.task_name}</div>
+                      <small className="text-muted">{a.status} | {a.time_spent}s</small>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </>
