@@ -47,6 +47,7 @@ export default function ChatbotPage() {
   const [response, setResponse] = useState(null);
   const [history, setHistory] = useState([]);
   const [style, setStyle] = useState(null);
+  const [activeMode, setActiveMode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bootLoading, setBootLoading] = useState(true);
   const [error, setError] = useState("");
@@ -65,23 +66,31 @@ export default function ChatbotPage() {
   );
 
   const conversation = useMemo(() => {
-    if (!selectedChat) return [];
-    return [
-      { id: `q-${selectedChat.chat_id}`, role: "user", text: selectedChat.question, timestamp: selectedChat.timestamp },
-      {
-        id: `a-${selectedChat.chat_id}`,
-        role: "assistant",
-        text: selectedChat.response,
-        responseType: selectedChat.response_type,
-        sourceQuestion: selectedChat.question,
-        timestamp: selectedChat.timestamp,
-      },
-    ];
-  }, [selectedChat]);
+    if (selectedChat) {
+      return [
+        { id: `q-${selectedChat.chat_id}`, role: "user", text: selectedChat.question, timestamp: selectedChat.timestamp },
+        {
+          id: `a-${selectedChat.chat_id}`,
+          role: "assistant",
+          text: selectedChat.response,
+          responseType: selectedChat.response_type,
+          sourceQuestion: selectedChat.question,
+          timestamp: selectedChat.timestamp,
+        },
+      ];
+    }
+    if (response?.text && response?.askedQuestion) {
+      return [
+        { id: "q-live", role: "user", text: response.askedQuestion, timestamp: new Date().toISOString() },
+        { id: "a-live", role: "assistant", text: response.text, responseType: response.response_type, sourceQuestion: response.askedQuestion, timestamp: new Date().toISOString() },
+      ];
+    }
+    return [];
+  }, [selectedChat, response]);
 
-  const loadPrompts = async (topic = "") => {
+  const loadPrompts = async (topic = "", mode = activeMode || style || "visual") => {
     try {
-      const res = await api.get("/chat/suggestions", { params: { topic } });
+      const res = await api.get("/chat/suggestions", { params: { topic, style_override: mode } });
       const prompts = Array.isArray(res.data?.prompts) ? res.data.prompts : [];
       setQuickPrompts(prompts.length ? prompts : QUICK_PROMPTS);
     } catch {
@@ -95,6 +104,7 @@ export default function ChatbotPage() {
     try {
       const [styleRes, historyRes] = await Promise.all([api.get("/style/mine"), api.get("/chat/history")]);
       setStyle(styleRes.data.learning_style || null);
+      setActiveMode(styleRes.data.learning_style || "visual");
       const rows = historyRes.data || [];
       setHistory(rows);
       setSelectedHistoryId(null);
@@ -126,6 +136,11 @@ export default function ChatbotPage() {
     };
   }, [audioSrc]);
 
+  useEffect(() => {
+    if (!activeMode) return;
+    loadPrompts(question || selectedChat?.question || response?.askedQuestion || "", activeMode);
+  }, [activeMode]);
+
   const refreshHistory = async () => {
     const latest = await api.get("/chat/history");
     const rows = latest.data || [];
@@ -142,14 +157,15 @@ export default function ChatbotPage() {
     setDownloadError("");
     setDownloadSuccess("");
     try {
-      const res = await api.post("/chat/", { question: asked });
+      const mode = activeMode || style || "visual";
+      const res = await api.post("/chat/", { question: asked, style_override: mode });
       const richResponse = { ...res.data, askedQuestion: asked };
       setResponse(richResponse);
       setFeedbackComment("");
       setFeedbackMsg("");
       setAutoPack(res.data.auto_resources || []);
       localStorage.setItem(CHAT_LATEST_RESPONSE_KEY, JSON.stringify(richResponse));
-      await loadPrompts(asked);
+      await loadPrompts(asked, mode);
 
       if (audioSrc) {
         window.URL.revokeObjectURL(audioSrc);
@@ -166,7 +182,7 @@ export default function ChatbotPage() {
         }
       }
 
-      if (res.data?.practice?.topic && Array.isArray(res.data?.practice?.tasks)) {
+      if (res.data?.response_type === "kinesthetic" && res.data?.practice?.topic && Array.isArray(res.data?.practice?.tasks)) {
         localStorage.setItem(
           "linkedPracticeBundle",
           JSON.stringify({
@@ -243,6 +259,16 @@ export default function ChatbotPage() {
         content: "",
         base_content: baseContent,
       });
+
+      if (contentType === "audio") {
+        const fileResp = await api.get(`/downloads/file/${created.data.download_id}`, { responseType: "blob" });
+        const blobUrl = window.URL.createObjectURL(new Blob([fileResp.data]));
+        if (audioSrc) window.URL.revokeObjectURL(audioSrc);
+        setAudioSrc(blobUrl);
+        setDownloadSuccess("Audio generated. Use player to listen.");
+        return;
+      }
+
       await downloadById(created.data.download_id, `${topic}_${contentType}`, contentType);
       setDownloadSuccess(`${contentType} downloaded.`);
     } catch (err) {
@@ -277,6 +303,10 @@ export default function ChatbotPage() {
       await createAndDownload("solution", topic, base);
       return;
     }
+    if (action === "audio") {
+      await createAndDownload("audio", topic, base);
+      return;
+    }
     if (action === "pdf") {
       await createAndDownload("pdf", topic, base);
     }
@@ -299,12 +329,13 @@ export default function ChatbotPage() {
     }
   };
 
-  const focusHistoryMessage = (chatId, questionText = "") => {
+  const focusHistoryMessage = (chatId, questionText = "", responseStyle = "") => {
     setSelectedHistoryId(chatId);
     setResponse(null);
     setAutoPack([]);
     setFeedbackComment("");
     setFeedbackMsg("");
+    if (responseStyle) setActiveMode(responseStyle);
     if (questionText) setQuestion(questionText);
     setTimeout(() => {
       const target = document.getElementById(`q-${chatId}`) || document.getElementById(`a-${chatId}`);
@@ -312,7 +343,7 @@ export default function ChatbotPage() {
     }, 60);
   };
 
-  const showLiveAssets = response?.chat_id && selectedHistoryId === response.chat_id;
+  const showLiveAssets = Boolean(response?.chat_id) && (!selectedHistoryId || selectedHistoryId === response.chat_id);
 
   return (
     <>
@@ -340,7 +371,7 @@ export default function ChatbotPage() {
                   <button
                     key={h.chat_id}
                     className={`vak-history-item text-start ${selectedHistoryId === h.chat_id ? "active" : ""}`}
-                    onClick={() => focusHistoryMessage(h.chat_id, h.question)}
+                    onClick={() => focusHistoryMessage(h.chat_id, h.question, h.learning_style_used)}
                     type="button"
                   >
                     <div className="vak-history-title">{h.question}</div>
@@ -359,12 +390,22 @@ export default function ChatbotPage() {
           <section className="vak-chat-main">
             <div className="vak-chat-topbar">
               <div className="vak-mode-pills">
-                <span className={`pill ${style === "visual" ? "active" : ""}`}>Visual</span>
-                <span className={`pill ${style === "auditory" ? "active" : ""}`}>Auditory</span>
-                <span className={`pill ${style === "kinesthetic" ? "active" : ""}`}>Kinesthetic</span>
+                {["visual", "auditory", "kinesthetic"].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`pill border-0 ${activeMode === mode ? "active" : ""}`}
+                    onClick={() => {
+                      setActiveMode(mode);
+                      loadPrompts(question || selectedChat?.question || response?.askedQuestion || "", mode);
+                    }}
+                  >
+                    {formatStyle(mode)}
+                  </button>
+                ))}
               </div>
               <div className="d-flex gap-2">
-                <button className="btn btn-sm surface-btn" onClick={() => loadPrompts(question || selectedChat?.question || "")} disabled={loading || bootLoading}>
+                <button className="btn btn-sm surface-btn" onClick={() => loadPrompts(question || selectedChat?.question || response?.askedQuestion || "", activeMode || style || "visual")} disabled={loading || bootLoading}>
                   New Suggestions
                 </button>
                 <button className="btn btn-sm surface-btn" onClick={clearChat} disabled={loading || bootLoading}>
@@ -377,6 +418,12 @@ export default function ChatbotPage() {
               {error && <div className="alert alert-danger py-2">{error}</div>}
               {downloadError && <div className="alert alert-danger py-2">{downloadError}</div>}
               {downloadSuccess && <div className="alert alert-success py-2">{downloadSuccess}</div>}
+              {audioSrc && (
+                <div className="alert alert-info py-2 d-flex align-items-center gap-2">
+                  <span>Audio response ready:</span>
+                  <audio controls autoPlay src={audioSrc} />
+                </div>
+              )}
 
               {bootLoading ? (
                 <div className="vak-empty-state">Loading chat...</div>
@@ -405,6 +452,7 @@ export default function ChatbotPage() {
                             <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("task", msg)}>Download Task</button>
                             <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("solution", msg)}>Download Solution</button>
                             <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("pdf", msg)}>Download PDF</button>
+                            <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("audio", msg)}>Listen Audio</button>
                             <button className="btn btn-sm surface-btn" onClick={() => handleMessageAction("followup", msg)}>Follow-up</button>
                           </div>
                         )}
@@ -418,7 +466,7 @@ export default function ChatbotPage() {
 
             {showLiveAssets && (response?.practice?.tasks?.length > 0 || response?.assets) && (
               <div className="p-3" style={{ borderTop: "1px solid var(--line)", background: "#fbfbfe" }}>
-                {response?.practice?.tasks?.length > 0 && (
+                {response?.response_type === "kinesthetic" && response?.practice?.tasks?.length > 0 && (
                   <div className="asset-panel mb-3">
                     <h6 className="mb-2">Assigned Practice Tasks ({response.practice.source})</h6>
                     <div className="d-flex flex-wrap gap-2 mb-2">
@@ -444,6 +492,13 @@ export default function ChatbotPage() {
                 {response?.assets && (
                   <div className="asset-panel">
                     <h6 className="mb-2">Learning-Style Assets</h6>
+                    {response.response_type === "visual" && (
+                      <div className={`alert py-2 ${response.assets.visual_status === "ai_image_generated" ? "alert-success" : "alert-warning"}`}>
+                        {response.assets.visual_status === "ai_image_generated"
+                          ? "AI visual generated successfully."
+                          : "AI image unavailable, fallback visual charts generated."}
+                      </div>
+                    )}
                     {response.assets.diagram && <p className="mb-2"><strong>Flow:</strong> {response.assets.diagram}</p>}
                     {response.assets.ai_image_url && (
                       <a href={response.assets.ai_image_url} target="_blank" rel="noreferrer">
@@ -451,11 +506,20 @@ export default function ChatbotPage() {
                       </a>
                     )}
                     {response.assets.video_url && <p className="mb-2"><a href={response.assets.video_url} target="_blank" rel="noreferrer">Open Video Explanation</a></p>}
+                    {Array.isArray(response.assets.visual_gallery) && response.assets.visual_gallery.length > 0 && (
+                      <div className="visual-gallery mb-2">
+                        {response.assets.visual_gallery.filter(Boolean).map((img, idx) => (
+                          <a key={`v-${idx}`} href={img} target="_blank" rel="noreferrer">
+                            <img src={img} alt={`visual-${idx + 1}`} className="asset-image" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                     {response.assets.audio_script && <pre className="chat-text mb-2">{response.assets.audio_script}</pre>}
                     {audioSrc && (
                       <div>
                         <p className="mb-1"><strong>Audio Explanation</strong></p>
-                        <audio controls src={audioSrc} className="w-100" />
+                        <audio controls autoPlay src={audioSrc} className="w-100" />
                       </div>
                     )}
                     {response.assets.starter_code && <pre className="chat-text">{response.assets.starter_code}</pre>}

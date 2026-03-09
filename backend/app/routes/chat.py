@@ -6,7 +6,6 @@ from app.models import LearningStyle, ChatHistory, Download, ChatFeedback
 from app.services.chatbot_service import generate_adaptive_response, get_quick_prompts
 from app.services.download_service import create_download_file
 from app.services.practice_task_service import generate_practice_tasks_from_topic
-from app.services.adaptive_content_service import generate_learning_asset
 
 
 chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
@@ -14,15 +13,9 @@ chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
 def _auto_generate_resources(user_id: int, style: str, topic: str, base_content: str) -> list[dict]:
     resources = []
-    # Generate per-type assets so task_sheet and solution are intentionally different.
+    # Keep this lightweight to avoid chatbot timeouts.
     content_types = ["pdf", "task_sheet", "solution"]
     for ctype in content_types:
-        generated = generate_learning_asset(
-            style=style,
-            content_type=ctype,
-            topic=topic,
-            base_content=base_content[:3500],
-        )
         if ctype == "task_sheet":
             asset_text = (
                 f"Topic: {topic}\n"
@@ -33,7 +26,7 @@ def _auto_generate_resources(user_id: int, style: str, topic: str, base_content:
                 "- Steps to implement\n"
                 "- Test cases to run\n"
                 "- Submission checklist\n\n"
-                f"{generated}"
+                f"{base_content[:2800]}"
             )
         elif ctype == "solution":
             asset_text = (
@@ -45,14 +38,14 @@ def _auto_generate_resources(user_id: int, style: str, topic: str, base_content:
                 "- Why this works\n"
                 "- Expected output\n"
                 "- Common mistakes avoided\n\n"
-                f"{generated}"
+                f"{base_content[:2800]}"
             )
         else:
             asset_text = (
                 f"Topic: {topic}\n"
                 f"Learning style: {style}\n"
                 f"Resource type: {ctype}\n\n"
-                f"{generated}"
+                f"{base_content[:2800]}"
             )
 
         file_path = create_download_file(user_id, ctype, asset_text)
@@ -73,7 +66,8 @@ def _auto_generate_resources(user_id: int, style: str, topic: str, base_content:
 @jwt_required()
 def ask_chatbot():
     user_id = int(get_jwt_identity())
-    question = (request.get_json() or {}).get("question", "").strip()
+    payload = request.get_json() or {}
+    question = payload.get("question", "").strip()
     if not question:
         return jsonify({"error": "question is required"}), 400
 
@@ -81,19 +75,21 @@ def ask_chatbot():
     if not style_row:
         return jsonify({"error": "learning style not found"}), 400
 
-    result = generate_adaptive_response(question, style_row.learning_style)
-    # Generate topic-specific tasks; fallback logic inside service handles failures gracefully.
+    requested_style = str(payload.get("style_override", "")).strip().lower()
+    effective_style = requested_style if requested_style in {"visual", "auditory", "kinesthetic"} else style_row.learning_style
+
+    result = generate_adaptive_response(question, effective_style)
     practice_tasks, practice_source = generate_practice_tasks_from_topic(question, count=3, allow_ai=True)
     audio_download_id = None
     try:
         auto_resources = _auto_generate_resources(
             user_id=user_id,
-            style=style_row.learning_style,
+            style=effective_style,
             topic=question,
             base_content=result["text"],
         )
 
-        if style_row.learning_style == "auditory":
+        if effective_style == "auditory":
             audio_text = result.get("assets", {}).get("audio_script") or result.get("text", "")
             audio_path = create_download_file(user_id, "audio", audio_text)
             audio_row = Download(user_id=user_id, content_type="audio", file_path=audio_path)
@@ -106,7 +102,7 @@ def ask_chatbot():
             question=question,
             response=result["text"],
             response_type=result["response_type"],
-            learning_style_used=style_row.learning_style,
+            learning_style_used=effective_style,
         )
         db.session.add(history)
         db.session.commit()
@@ -118,11 +114,12 @@ def ask_chatbot():
     result["chat_id"] = history.chat_id
     if audio_download_id:
         result["audio_download_id"] = audio_download_id
-    result["practice"] = {
-        "topic": question,
-        "source": practice_source,
-        "tasks": practice_tasks,
-    }
+    if effective_style == "kinesthetic":
+        result["practice"] = {
+            "topic": question,
+            "source": practice_source,
+            "tasks": practice_tasks,
+        }
     return jsonify(result)
 
 
@@ -165,8 +162,9 @@ def chat_history():
 def chat_suggestions():
     user_id = int(get_jwt_identity())
     topic = (request.args.get("topic") or "").strip()
+    requested_style = (request.args.get("style_override") or "").strip().lower()
     style_row = LearningStyle.query.get(user_id)
-    style = style_row.learning_style if style_row else "visual"
+    style = requested_style if requested_style in {"visual", "auditory", "kinesthetic"} else (style_row.learning_style if style_row else "visual")
     prompts = get_quick_prompts(topic or "Java basics", style)
     return jsonify({"topic": topic or "Java basics", "prompts": prompts})
 

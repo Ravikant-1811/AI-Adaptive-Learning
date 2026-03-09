@@ -397,7 +397,7 @@ def _visual_topic_image_url(blueprint: dict) -> str:
 
 
 def _generate_ai_visual_variants(question: str, blueprint: dict) -> dict[str, str | None]:
-    enabled = os.getenv("OPENAI_VISUAL_MULTI_IMAGE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+    enabled = os.getenv("OPENAI_VISUAL_MULTI_IMAGE_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
     if not enabled:
         return {
             "topic_image_url": None,
@@ -452,20 +452,27 @@ def generate_adaptive_response(question: str, style: str) -> dict:
         blueprint = _generate_visual_blueprint(question, text)
         ai_visual_image_url = _generate_ai_visual_image(question, blueprint)
         ai_variants = _generate_ai_visual_variants(question, blueprint)
+        topic_image_url = ai_variants.get("topic_image_url") or _visual_topic_image_url(blueprint)
+        flowchart_image_url = ai_variants.get("flowchart_image_url") or _visual_mermaid_url(blueprint)
+        graph_image_url = ai_variants.get("graph_image_url") or _visual_chart_url(blueprint)
+        bar_graph_image_url = ai_variants.get("bar_graph_image_url") or _visual_bar_chart_url(blueprint)
+        used_fallback_visuals = not bool(ai_visual_image_url)
         return {
             "response_type": "visual",
             "ai_used": ai_used,
             "text": text,
             "assets": {
-                "ai_image_url": ai_visual_image_url,
+                "ai_image_url": ai_visual_image_url or topic_image_url,
                 "diagram": " -> ".join(blueprint["flow_steps"]),
-                "graph_image_url": ai_variants.get("graph_image_url") or _visual_chart_url(blueprint),
-                "bar_graph_image_url": ai_variants.get("bar_graph_image_url") or _visual_bar_chart_url(blueprint),
-                "flowchart_image_url": ai_variants.get("flowchart_image_url") or _visual_mermaid_url(blueprint),
-                "topic_image_url": ai_variants.get("topic_image_url") or _visual_topic_image_url(blueprint),
+                "graph_image_url": graph_image_url,
+                "bar_graph_image_url": bar_graph_image_url,
+                "flowchart_image_url": flowchart_image_url,
+                "topic_image_url": topic_image_url,
+                "visual_gallery": [topic_image_url, flowchart_image_url, graph_image_url, bar_graph_image_url],
                 "video_url": _youtube_search_url(topic),
                 "gif_url": "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
                 "suggested_downloads": ["pdf", "video"],
+                "visual_status": "fallback_generated" if used_fallback_visuals else "ai_image_generated",
             },
         }
 

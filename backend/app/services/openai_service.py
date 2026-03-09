@@ -187,30 +187,38 @@ def generate_image_data_url(prompt: str, size: str = "1024x1024") -> str | None:
     if not api_key or not prompt.strip():
         return None
 
-    image_model = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1").strip()
-    try:
-        response = requests.post(
-            OPENAI_IMAGE_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": image_model,
-                "prompt": prompt[:3200],
-                "size": size,
-            },
-            timeout=16,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        data = (payload.get("data") or [{}])[0]
-        b64 = data.get("b64_json")
-        if b64:
-            return f"data:image/png;base64,{b64}"
-        url = data.get("url")
-        if url:
-            return str(url)
-        return None
-    except Exception:
-        return None
+    configured = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1").strip()
+    candidates = [m.strip() for m in configured.split(",") if m.strip()]
+    for fallback_model in ["gpt-image-1", "dall-e-3", "dall-e-2"]:
+        if fallback_model not in candidates:
+            candidates.append(fallback_model)
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    for image_model in candidates:
+        try:
+            response = requests.post(
+                OPENAI_IMAGE_URL,
+                headers=headers,
+                json={
+                    "model": image_model,
+                    "prompt": prompt[:3200],
+                    "size": size,
+                },
+                timeout=35,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            data = (payload.get("data") or [{}])[0]
+            b64 = data.get("b64_json")
+            if b64:
+                return f"data:image/png;base64,{b64}"
+            url = data.get("url")
+            if url:
+                return str(url)
+        except Exception:
+            continue
+    return None
