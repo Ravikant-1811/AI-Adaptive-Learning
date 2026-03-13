@@ -148,6 +148,23 @@ export default function ChatbotPage() {
     return rows;
   };
 
+  const deleteChatItem = async (chatId) => {
+    if (!chatId) return;
+    setError("");
+    try {
+      await api.delete(`/chat/history/${chatId}`);
+      const rows = await refreshHistory();
+      if (selectedHistoryId === chatId) setSelectedHistoryId(null);
+      if (response?.chat_id === chatId) setResponse(null);
+      if (!rows.length) {
+        setAutoPack([]);
+        setQuestion("");
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to delete chat.");
+    }
+  };
+
   const ask = async (prefill) => {
     const asked = (prefill || question).trim();
     if (!asked || loading) return;
@@ -207,6 +224,7 @@ export default function ChatbotPage() {
   const clearChat = async () => {
     setError("");
     try {
+      if (!window.confirm("Clear all chat history? This cannot be undone.")) return;
       await api.delete("/chat/history");
       setHistory([]);
       setSelectedHistoryId(null);
@@ -374,7 +392,30 @@ export default function ChatbotPage() {
                     onClick={() => focusHistoryMessage(h.chat_id, h.question, h.learning_style_used)}
                     type="button"
                   >
-                    <div className="vak-history-title">{h.question}</div>
+                    <div className="d-flex justify-content-between align-items-start gap-2">
+                      <div className="vak-history-title">{h.question}</div>
+                      <span
+                        className="vak-history-delete"
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Delete chat"
+                        title="Delete chat"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (window.confirm("Delete this chat item?")) deleteChatItem(h.chat_id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm("Delete this chat item?")) deleteChatItem(h.chat_id);
+                          }
+                        }}
+                      >
+                        Del
+                      </span>
+                    </div>
                     <small className="text-muted">{shortTime(h.timestamp) || "recent"}</small>
                   </button>
                 ))
@@ -408,8 +449,19 @@ export default function ChatbotPage() {
                 <button className="btn btn-sm surface-btn" onClick={() => loadPrompts(question || selectedChat?.question || response?.askedQuestion || "", activeMode || style || "visual")} disabled={loading || bootLoading}>
                   New Suggestions
                 </button>
+                {selectedHistoryId ? (
+                  <button
+                    className="btn btn-sm surface-btn"
+                    onClick={() => {
+                      if (window.confirm("Delete selected chat item?")) deleteChatItem(selectedHistoryId);
+                    }}
+                    disabled={loading || bootLoading}
+                  >
+                    Delete Chat
+                  </button>
+                ) : null}
                 <button className="btn btn-sm surface-btn" onClick={clearChat} disabled={loading || bootLoading}>
-                  Clear Chat
+                  Clear All
                 </button>
               </div>
             </div>

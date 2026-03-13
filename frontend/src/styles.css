@@ -1162,6 +1162,23 @@ a {
   overflow: hidden;
 }
 
+.vak-history-delete {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #8a1f2b;
+  border: 1px solid #f0c7ce;
+  background: #fff5f6;
+  border-radius: 10px;
+  padding: 0.2rem 0.45rem;
+  user-select: none;
+}
+
+.vak-history-delete:hover {
+  border-color: #eaa6b1;
+  background: #ffe9ec;
+}
+
 .vak-chat-main {
   display: grid;
   grid-template-rows: auto 1fr auto auto;
